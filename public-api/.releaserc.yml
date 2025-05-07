@@ -1,0 +1,14 @@
+generateNotes:
+  - "@semantic-release/release-notes-generator"
+success: false
+fail: false
+npmPublish: false
+tagFormat: gbi-search-public-api:${version}
+plugins:
+  - - "@semantic-release/commit-analyzer"
+    - preset: angular
+      parserOpts:
+        - "BREAKING CHANGE"
+        - "BREAKING CHANGES"
+        - "BREAKING"
+  - - "@semantic-release/release-notes-generator"

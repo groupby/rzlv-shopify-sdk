@@ -1,0 +1,25 @@
+name: SDK semantic-release
+
+on:
+  push:
+    branches:
+      - release
+
+jobs:
+  set-release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+        working-directory: './public-api/'
+      - run: npm run semantic-release
+        working-directory: './public-api/'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
