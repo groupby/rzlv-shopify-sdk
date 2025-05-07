@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "outDir":"../dist-state-driver",
+    "module": "ESNext",
+    "target": "ESNext",
+    "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "../dist-state-driver/types",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["*.ts","**/*.ts"],
+  "exclude": ["vite*.ts","node_modules", "dist-state-driver"]
+}

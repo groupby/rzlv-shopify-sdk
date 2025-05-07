@@ -1,0 +1,16 @@
+{
+    "name": "rzlv-shopify-sdk",
+    "private": true,
+    "workspaces": [
+        "public-api/*",
+        "state-driver/*"
+    ],
+    "dependencies": {
+        "lodash": "^4.17.21"
+    },
+    "devDependencies": {
+        "vite": "^5.0.8",
+        "vite-plugin-dts": "^4.5.0",
+        "typescript": "^5.0.0"
+    }
+}

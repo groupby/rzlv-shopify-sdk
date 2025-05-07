@@ -1,0 +1,25 @@
+{
+  "name": "gbi-search-state-driver",
+  "private": false,
+  "version": "1.0.2",
+  "description": "A public stateful SDK for GBI Search exposing selected functionality.",
+  "main": "./dist-state-driver/gbi-search-state-driver.umd.js",
+  "module": "./dist-state-driver/gbi-search-state-driver.es.js",
+  "types": "./dist-state-driver/types/index.dt.s",  
+  "exports": {
+    ".": {
+      "import": "./dist-state-driver/gbi-search-state-driver.es.js",
+      "require": "./dist-state-driver/gbi-search-state-driver.umd.js"
+    }
+  },
+  "files": [
+    "dist-state-driver"
+  ],
+  "scripts": {
+    "build": "vite build --config vite.config.statedriversdk.ts",
+    "publish-local": "publish --registry http://localhost:4873"
+  },
+  "dependencies": {
+    "effector": "^23.3.0"
+  }
+}
