@@ -1,0 +1,16 @@
+{
+  "name": "public-api-sdk",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "cd public-api && vite build",
+            "forwardAllArgs": false
+          }
+        ]
+      }
+    }
+  }
+}

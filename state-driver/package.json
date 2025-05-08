@@ -16,7 +16,7 @@
     "dist-state-driver"
   ],
   "scripts": {
-    "build": "vite build --config vite.config.statedriversdk.ts",
+    "build": "vite build",
     "publish-local": "publish --registry http://localhost:4873"
   },
   "dependencies": {

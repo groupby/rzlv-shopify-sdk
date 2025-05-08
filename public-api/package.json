@@ -16,7 +16,7 @@
     "dist-public"
   ],
   "scripts": {
-    "build": "vite build --config vite.config.public.ts",
+    "build": "vite build",
     "publish-local": "publish --registry http://localhost:4873"
   }
 }
