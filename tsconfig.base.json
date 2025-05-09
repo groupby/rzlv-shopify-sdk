@@ -2,7 +2,7 @@
     "compilerOptions": {
       "paths": {
         "@rzlv/public-api-sdk": ["public-api/src/index.ts"],
-        "@rzlv/public-api-sdk/*": ["public-api/src/*"]      
+        "@rzlv/public-api-sdk/requestSearch": ["public-api/src/search-requester/requestSearch.ts"]      
       }
     }
   }

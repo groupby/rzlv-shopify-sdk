@@ -10,7 +10,7 @@ import { initUrlManager } from './urlManager';
 import { searchOutputStore, updateOutputStore } from './searchOutputStore';
 import { updateInputStore, searchInputStore } from './searchInputStore';
 import { initSearchManager } from './searchManager';
-import { requestSearch } from '@rzlv/public-api-sdk/search-requester/requestSearch';
+import { requestSearch } from '@rzlv/public-api-sdk/requestSearch';
 import { handleNextPage } from './ui-functions/handleNextPage';
 import { handlePreviousPage } from './ui-functions/handlePreviousPage';
 import { applyRange } from './ui-functions/applyRange';
