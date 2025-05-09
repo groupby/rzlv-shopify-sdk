@@ -1,6 +1,6 @@
 import { createEffect, sample } from 'effector';
 import { searchInputStore, updateInputStore } from './searchInputStore';
-import { requestSearch, RequestSearchResponse } from '../../public-api/src/search-requester/requestSearch';
+import { requestSearch, RequestSearchResponse } from '@rzlv/public-api-sdk/search-requester/requestSearch';
 import { updateOutputStore } from './searchOutputStore';
 import type { SearchParams } from './types';
 import { PaginationType } from './types';

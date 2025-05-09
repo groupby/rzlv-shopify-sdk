@@ -1,4 +1,5 @@
 {
+  "extends":"../tsconfig.base.json",
   "compilerOptions": {
     "outDir":"../dist-state-driver",
     "module": "ESNext",
@@ -12,6 +13,6 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["*.ts","**/*.ts"],
+  "include": ["*.ts","**/*.ts", "vite.config.,ts"],
   "exclude": ["vite*.ts","node_modules", "dist-state-driver"]
 }

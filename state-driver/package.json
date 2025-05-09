@@ -5,7 +5,7 @@
   "description": "A public stateful SDK for GBI Search exposing selected functionality.",
   "main": "./dist-state-driver/gbi-search-state-driver.umd.js",
   "module": "./dist-state-driver/gbi-search-state-driver.es.js",
-  "types": "./dist-state-driver/types/index.dt.s",  
+  "types": "./dist-state-driver/types/index.dt.s",
   "exports": {
     ".": {
       "import": "./dist-state-driver/gbi-search-state-driver.es.js",

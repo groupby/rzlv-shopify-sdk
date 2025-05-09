@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+      "paths": {
+        "@rzlv/public-api-sdk": ["public-api/src/index.ts"],
+        "@rzlv/public-api-sdk/*": ["public-api/src/*"]      
+      }
+    }
+  }
+  
