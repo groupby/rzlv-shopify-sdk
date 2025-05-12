@@ -49,7 +49,7 @@ export const searchFx = createEffect(
       params.shopTenant,
       params.appEnv,
       params.searchOptions,
-      (searchManagerConfig.mergeShopifyData !== undefined ? searchManagerConfig.mergeShopifyData : true),
+      (searchManagerConfig.mergeShopifyData ?? true),
       (searchManagerConfig.shopifyConfig !== undefined ? searchManagerConfig.shopifyConfig : undefined)
     );
   }

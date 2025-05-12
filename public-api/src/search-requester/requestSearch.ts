@@ -93,7 +93,7 @@ export async function requestSearch(
   shopTenant: string,
   appEnv: AppEnv,
   searchOptions: RequestSearchOptions,
-  mergeShopifyData: boolean = true,
+  mergeShopifyData = true,
   shopifyConfig?: ShopifyConfig
 ): Promise<RequestSearchResponse> {
   try {
