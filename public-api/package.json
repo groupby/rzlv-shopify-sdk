@@ -5,7 +5,7 @@
   "description": "A public SDK for GBI Search exposing selected functionality.",
   "main": "./dist-public/gbi-search-public-api.umd.js",
   "module": "./dist-public/gbi-search-public-api.es.js",
-  "types": "./dist-public/types/index.dt.s",
+  "types": "./dist-public/types/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist-public/gbi-search-public-api.es.js",

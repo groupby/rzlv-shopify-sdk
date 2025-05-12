@@ -3,6 +3,7 @@ import { searchInputStore, updateInputStore } from './searchInputStore';
 import { requestSearch, RequestSearchResponse } from '@rzlv/public-api-sdk/requestSearch';
 import { updateOutputStore } from './searchOutputStore';
 import type { SearchParams } from './types';
+import type { ShopifyConfig } from '@rzlv/public-api-sdk/fetchSfProducts';
 import { PaginationType } from './types';
 import { debugLog } from './debugLogger';
 
@@ -37,6 +38,7 @@ export interface SearchManagerConfig {
   area: string;
   collectionId?: string;
   mergeShopifyData?: boolean;  // Setting for merging Shopify data on init
+  shopifyConfig?: ShopifyConfig
 }
 
 // Create the effect that triggers the search API call.
@@ -47,7 +49,8 @@ export const searchFx = createEffect(
       params.shopTenant,
       params.appEnv,
       params.searchOptions,
-      (searchManagerConfig.mergeShopifyData !== undefined ? searchManagerConfig.mergeShopifyData : true)
+      (searchManagerConfig.mergeShopifyData !== undefined ? searchManagerConfig.mergeShopifyData : true),
+      (searchManagerConfig.shopifyConfig !== undefined ? searchManagerConfig.shopifyConfig : undefined)
     );
   }
 );
