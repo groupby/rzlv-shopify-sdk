@@ -3,6 +3,7 @@ import { fetchAutocompleteResults } from '../utils/autocompleteUtils';
 import type { AppEnv, SearchResult, ProductDetail } from '../utils/searchUtils.types';
 import { requestSearch } from '../search-requester/requestSearch';
 import type { RequestSearchOptions, RequestSearchResponse } from '../search-requester/requestSearch';
+import type { ShopifyConfig } from '../search-requester/fetchStorefrontProducts';
 
 /**
  * Options for the autocomplete request.
@@ -36,6 +37,7 @@ export type RequestAutocompleteSearchOptions = {
    * Choose whether to merge search results with Shopify product data.
    */
   mergeShopifyData?: boolean;
+  shopifyConfig?: ShopifyConfig;
   /**
    * If true, the first autocomplete suggestion will be used as the query for search results.
    * If false or not provided, the original query will be used.
@@ -96,7 +98,7 @@ export async function requestAutocompleteWithSearch(
       pageSize: options.pageSize || 5
     };
 
-    const searchResults = await requestSearch(shopTenant, appEnv, searchOptions, options.mergeShopifyData ?? true);
+    const searchResults = await requestSearch(shopTenant, appEnv, searchOptions, options.mergeShopifyData ?? true, options.shopifyConfig ?? undefined);
 
     // Return the results.
     return { autocomplete: autocompleteResults, search: searchResults };

@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "vite build",
-    "publish-local": "publish --registry http://localhost:4873"
+    "publish-local": "npm publish --registry http://localhost:4873"
   },
   "dependencies": {
     "effector": "^23.3.0"

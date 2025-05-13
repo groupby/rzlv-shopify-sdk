@@ -119,10 +119,7 @@ export async function requestSearch(
 
     // If merging is enabled, merge the Shopify data.
     if (mergeShopifyData) {
-      if (!shopifyConfig) {
-        throw new Error('Shopify configuration is not set. Please check that shopifyConfig is passed in requestSearch.');
-      } 
-
+    
       const mergedProducts = await transformProductsForVariantRelevancy(searchResults, shopifyConfig);
 
       // Return the merged products along with the raw response.

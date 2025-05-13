@@ -1,7 +1,7 @@
 {
   "name": "gbi-search-public-api",
   "private": false,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A public SDK for GBI Search exposing selected functionality.",
   "main": "./dist-public/gbi-search-public-api.umd.js",
   "module": "./dist-public/gbi-search-public-api.es.js",
@@ -17,6 +17,6 @@
   ],
   "scripts": {
     "build": "vite build",
-    "publish-local": "publish --registry http://localhost:4873"
+    "publish-local": "npm publish --registry http://localhost:4873"
   }
 }
