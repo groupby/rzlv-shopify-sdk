@@ -22,7 +22,7 @@ import type {
   ProductVariant,
 } from './searchUtils.types';
 
-import { getShopifyConfig } from '../search-requester/shopifyConfig';
+import type { ShopifyConfig } from '../search-requester/fetchStorefrontProducts';
 import { fetchStorefrontProducts } from '../search-requester/fetchStorefrontProducts';
 
 /**
@@ -236,11 +236,10 @@ export function buildProductHandles(products: Products): string[] {
  * @param handles - An array of Shopify product handles.
  * @returns A promise that resolves to an object containing the fetched product details.
  */
-export async function fetchProductDetails(handles: string[]): Promise<ProductDetailsResult> {
+export async function fetchProductDetails(handles: string[], shopifyConfig: ShopifyConfig): Promise<ProductDetailsResult> {
 
-  const shopifyConfig = getShopifyConfig();
   if (shopifyConfig) {
-    return fetchStorefrontProducts(handles);
+    return fetchStorefrontProducts(handles, shopifyConfig);
   } else {
     const promises = handles.map(async handle => {
       try {
@@ -304,6 +303,7 @@ export function reorderVariantsByRelevancy(shopifyProducts: ProductDetail[], sit
 
     return {
       ...product,
+      ...siteSearchProduct,
       variants: [...reorderedVariants, ...remainingVariants],
     };
   });
@@ -315,11 +315,11 @@ export function reorderVariantsByRelevancy(shopifyProducts: ProductDetail[], sit
  * @param siteSearchProducts - The products data from the site search API.
  * @returns A promise that resolves to an array of Shopify products with reordered variants.
  */
-export async function transformProductsForVariantRelevancy(siteSearchProducts: Products): Promise<ProductDetail[]> {
+export async function transformProductsForVariantRelevancy(siteSearchProducts: Products, shopifyConfig: ShopifyConfig): Promise<ProductDetail[]> {
   const handles = buildProductHandles(siteSearchProducts);
 
   // Fetch product details from Shopify
-  const { products: shopifyProducts } = await fetchProductDetails(handles);
+  const { products: shopifyProducts } = await fetchProductDetails(handles, shopifyConfig);
 
   if (!shopifyProducts || shopifyProducts.length === 0) {
     return [];

@@ -1,5 +1,4 @@
 import { ProductDetail, ProductDetailsResult, ProductVariant } from "../utils/searchUtils.types";
-import { getShopifyConfig } from "./shopifyConfig";
 
 /**
  * Fetches Shopify product details using the Storefront API with GraphQL.
@@ -12,13 +11,15 @@ import { getShopifyConfig } from "./shopifyConfig";
  * const result = await fetchStorefrontProducts(["gift-card", "shirt"]);
  * console.log(result.products); // Array of ProductDetail objects
  */
-export async function fetchStorefrontProducts(handles: string[]): Promise<ProductDetailsResult> {
-  const config = getShopifyConfig();
-  if (!config) {
-    throw new Error("Shopify configuration is required. Call setShopifyConfig() first.");
-  }
 
-  const { domain, token } = config;
+export interface ShopifyConfig {
+  domain: string;
+  token: string;
+}
+
+export async function fetchStorefrontProducts(handles: string[], shopifyConfig: ShopifyConfig): Promise<ProductDetailsResult> {
+
+  const { domain, token } = shopifyConfig;
   const endpoint = `https://${domain}/api/2025-01/graphql.json`;
 
   if (!handles.length) {
