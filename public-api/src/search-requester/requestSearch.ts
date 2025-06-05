@@ -5,8 +5,7 @@ import {
 } from '../utils/searchUtils';
 
 import type { SearchResult, ProductDetail, AppEnv } from '../utils/searchUtils.types';
-import { getShopifyConfig } from './shopifyConfig';
-
+import type { ShopifyConfig } from './fetchStorefrontProducts';
 /**
  * Options for the search request.
  */
@@ -94,7 +93,8 @@ export async function requestSearch(
   shopTenant: string,
   appEnv: AppEnv,
   searchOptions: RequestSearchOptions,
-  mergeShopifyData: boolean = true
+  mergeShopifyData = true,
+  shopifyConfig?: ShopifyConfig
 ): Promise<RequestSearchResponse> {
   try {
     // If searchId is provided, set the global GBI_SEARCH_ID.
@@ -119,12 +119,8 @@ export async function requestSearch(
 
     // If merging is enabled, merge the Shopify data.
     if (mergeShopifyData) {
-      // const config = getShopifyConfig();
-      // if (!config) {
-      //   throw new Error('Shopify configuration is not set. Call setShopifyConfig() first.');
-      // } commenting this out because we do the check in the methods following line 127 below
-
-      const mergedProducts = await transformProductsForVariantRelevancy(searchResults);
+    
+      const mergedProducts = await transformProductsForVariantRelevancy(searchResults, shopifyConfig);
 
       // Return the merged products along with the raw response.
       return { mergedProducts, rawResponse: searchResults };
