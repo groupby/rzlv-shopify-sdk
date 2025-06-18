@@ -127,16 +127,18 @@ class GBIRecommendationsCarousel {
         productId: this.config.productId
       });
 
-      // Initialize the RecsManager with configuration
+      // Phase 3: Initialize the RecsManager with updated configuration
       window.GBISearchStateDriver.initRecsManager({
         shopTenant: this.config.shopTenant,
         appEnv: window.GBI_APP_ENV || 'PRODUCTION',
         name: this.config.modelName,
         collection: this.config.collection,
-        pageSize: this.config.pageSize,
+        uiPageSize: this.config.pageSize, // Phase 2: Updated parameter name
         productID: this.config.productId || undefined,
-        mergeShopifyData: true
-      });
+        mergeShopifyData: true,
+        maxApiResults: this.config.maxResults || 100, // Phase 1: Request more results from API
+        cacheTTL: 5 * 60 * 1000 // Phase 1: 5 minute cache
+      }, this.config.instanceId || 'default'); // Phase 1: Instance support
 
       // Set the UI page size for carousel pagination
       const itemsPerPage = this.getCurrentItemsPerPage();
@@ -187,30 +189,50 @@ class GBIRecommendationsCarousel {
 
   loadCurrentPage() {
     try {
-      // Get current page products from RecsManager
-      const products = window.GBISearchStateDriver.getCurrentPageProducts();
+      // Phase 3: Enhanced loading with instance support and better error handling
+      const instanceId = this.config.instanceId || 'default';
+
+      // Get current page products from RecsManager with instance support
+      const products = window.GBISearchStateDriver.getCurrentPageProducts(instanceId);
       const state = window.GBISearchStateDriver.getRecsManagerState();
+
+      // Phase 3: Use new Phase 2 pagination info
+      const pageInfo = window.GBISearchStateDriver.getPageInfo();
 
       this.log('Loading current page:', {
         productsCount: products?.length || 0,
-        currentPage: state.currentPage,
-        totalPages: state.totalPages
+        currentPage: pageInfo.currentPage,
+        totalPages: pageInfo.totalPages,
+        totalProducts: pageInfo.totalProducts,
+        hasNextPage: pageInfo.hasNextPage,
+        hasPreviousPage: pageInfo.hasPreviousPage,
+        isFirstPage: pageInfo.isFirstPage,
+        isLastPage: pageInfo.isLastPage
       });
 
       if (products && products.length > 0) {
         this.renderProducts(products);
-        this.totalPages = state.totalPages || 1;
-        this.currentPage = (state.currentPage || 1) - 1; // Convert to 0-based
+        this.totalPages = pageInfo.totalPages || 1;
+        this.currentPage = (pageInfo.currentPage || 1) - 1; // Convert to 0-based
         this.renderDots();
         this.showCarousel();
+        this.updateDebugInfo(pageInfo);
         this.log('Carousel rendered successfully');
       } else if (state.loading) {
         // Still loading, try again in a moment
         this.log('Still loading, retrying...');
         setTimeout(() => this.loadCurrentPage(), 500);
       } else {
-        this.log('No products found');
-        this.showError('No recommendations found for this product.');
+        // Phase 3: Better error handling - check if we have products but wrong page
+        const allProducts = window.GBISearchStateDriver.getAllProducts();
+        if (allProducts && allProducts.length > 0) {
+          this.log('Products available but current page is empty, jumping to first page');
+          window.GBISearchStateDriver.jumpToFirstPage();
+          setTimeout(() => this.loadCurrentPage(), 100); // Retry after jump
+        } else {
+          this.log('No products found');
+          this.showError('No recommendations found for this product.');
+        }
       }
 
     } catch (error) {
@@ -383,10 +405,15 @@ class GBIRecommendationsCarousel {
   goToNextPage() {
     this.log('Going to next page');
     try {
-      window.GBISearchStateDriver.nextPage();
-      const state = window.GBISearchStateDriver.getRecsManagerState();
-      this.currentPage = (state.currentPage || 1) - 1; // Convert to 0-based
-      this.loadCurrentPage();
+      // Phase 3: Enhanced navigation with validation
+      if (window.GBISearchStateDriver.canNavigateNext()) {
+        window.GBISearchStateDriver.nextPage();
+        const pageInfo = window.GBISearchStateDriver.getPageInfo();
+        this.currentPage = (pageInfo.currentPage || 1) - 1; // Convert to 0-based
+        this.loadCurrentPage();
+      } else {
+        this.log('Cannot navigate to next page');
+      }
     } catch (error) {
       console.error('Error navigating to next page:', error);
     }
@@ -395,12 +422,39 @@ class GBIRecommendationsCarousel {
   goToPreviousPage() {
     this.log('Going to previous page');
     try {
-      window.GBISearchStateDriver.previousPage();
-      const state = window.GBISearchStateDriver.getRecsManagerState();
-      this.currentPage = (state.currentPage || 1) - 1; // Convert to 0-based
-      this.loadCurrentPage();
+      // Phase 3: Enhanced navigation with validation
+      if (window.GBISearchStateDriver.canNavigatePrevious()) {
+        window.GBISearchStateDriver.previousPage();
+        const pageInfo = window.GBISearchStateDriver.getPageInfo();
+        this.currentPage = (pageInfo.currentPage || 1) - 1; // Convert to 0-based
+        this.loadCurrentPage();
+      } else {
+        this.log('Cannot navigate to previous page');
+      }
     } catch (error) {
       console.error('Error navigating to previous page:', error);
+    }
+  }
+
+  // Phase 3: New debug info update method
+  updateDebugInfo(pageInfo = null) {
+    if (!this.config.debug) return;
+
+    try {
+      const info = pageInfo || window.GBISearchStateDriver.getPageInfo();
+      const debugElement = this.element?.querySelector('.gbi-debug-state');
+
+      if (debugElement) {
+        debugElement.innerHTML = `
+          <div>Page: ${info.currentPage}/${info.totalPages}</div>
+          <div>Products: ${info.productsOnCurrentPage}/${info.totalProducts}</div>
+          <div>Range: ${info.pageStartIndex}-${info.pageEndIndex - 1}</div>
+          <div>Navigation: ${info.hasPreviousPage ? '←' : '⊗'} ${info.hasNextPage ? '→' : '⊗'}</div>
+          <div>State: ${info.isFirstPage ? 'First' : info.isLastPage ? 'Last' : 'Middle'}</div>
+        `;
+      }
+    } catch (error) {
+      console.error('Error updating debug info:', error);
     }
   }
 
@@ -429,6 +483,26 @@ class GBIRecommendationsCarousel {
       if (errorText) {
         errorText.textContent = message;
       }
+
+      // Phase 3: Add retry button for better UX
+      const retryBtn = this.errorElement.querySelector('.gbi-retry-btn');
+      if (retryBtn) {
+        retryBtn.onclick = () => {
+          this.showLoading();
+          setTimeout(() => this.initializeRecsManager(), 1000);
+        };
+      }
+    }
+  }
+
+  // Phase 3: Enhanced error recovery
+  async retryInitialization() {
+    try {
+      this.log('Retrying initialization...');
+      await this.initializeRecsManager();
+    } catch (error) {
+      this.log('Retry failed:', error);
+      this.showError('Retry failed. Please refresh the page.');
     }
   }
 }

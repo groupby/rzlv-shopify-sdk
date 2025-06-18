@@ -59,10 +59,11 @@
   Ensure required assets are loaded - More reliable method
   Uses global flag instead of content_for_header check to prevent duplicate loading
 {% endcomment %}
-{% unless window.gbi_script_loaded %}
+{%- unless gbi_recommendations_script_loaded -%}
   {{ 'gbi-recommendations-carousel.js' | asset_url | script_tag }}
   <script>window.gbi_script_loaded = true;</script>
-{% endunless %}
+  {%- assign gbi_recommendations_script_loaded = true -%}
+{%- endunless -%}
 
 <div class="gbi-recommendations-carousel gbi-layout-{{ layout_type }}"
      id="{{ unique_id }}"
@@ -773,12 +774,19 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!this.checkSDK()) return;
       
       try {
-        // Initialize recommendations manager
-        await window.GBISearchStateDriver.initRecsManager(config.modelName, config.collection);
-        
-        // Set page size
-        window.GBISearchStateDriver.setPageSize(config.itemsPerPage);
-        
+        // Phase 3: Initialize recommendations manager with updated API
+        await window.GBISearchStateDriver.initRecsManager({
+          shopTenant: config.shopTenant,
+          appEnv: window.GBI_APP_ENV || 'PRODUCTION',
+          name: config.modelName,
+          collection: config.collection,
+          uiPageSize: config.itemsPerPage,
+          productID: config.productId || undefined,
+          mergeShopifyData: true,
+          maxApiResults: 100,
+          cacheTTL: 5 * 60 * 1000
+        }, config.modelName); // Use model name as instance ID
+
         // Load first page
         await this.refreshProducts();
         
@@ -794,20 +802,20 @@ document.addEventListener('DOMContentLoaded', function() {
     async refreshProducts() {
       try {
         const products = window.GBISearchStateDriver.getCurrentPageProducts();
-        const state = window.GBISearchStateDriver.getRecsManagerState();
-        
+        const pageInfo = window.GBISearchStateDriver.getPageInfo();
+
         this.products = products || [];
-        this.currentPage = state?.currentPage || 1;
-        this.totalPages = state?.totalPages || 1;
-        
+        this.currentPage = pageInfo.currentPage;
+        this.totalPages = pageInfo.totalPages;
+
         this.renderProducts();
         this.updateNavigation();
         this.updateInfo();
-        
+
         if (config.debug) {
-          this.updateDebug(state);
+          this.updateDebug(pageInfo);
         }
-        
+
       } catch (error) {
         console.error('Error refreshing products:', error);
         this.showError('Failed to refresh products');

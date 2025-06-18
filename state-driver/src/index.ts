@@ -25,7 +25,23 @@ import {
   previousPage,
   setPageSize,
   goToPage,
-  getRecsManagerState
+  getRecsManagerState,
+  clearRecsCache,
+  refreshRecommendations,
+  getInstanceConfig,
+  getAllInstances,
+  recsManagerStore,
+  // Phase 2: Advanced pagination functions
+  getPageInfo,
+  getPageProducts,
+  getAllProducts,
+  getProductsInRange,
+  jumpToFirstPage,
+  jumpToLastPage,
+  canNavigateNext,
+  canNavigatePrevious,
+  getPageRange,
+  validatePageNumber
 } from './recsManager';
 
 export {
@@ -56,4 +72,20 @@ export {
   setPageSize,
   goToPage,
   getRecsManagerState,
+  clearRecsCache,
+  refreshRecommendations,
+  getInstanceConfig,
+  getAllInstances,
+  recsManagerStore,
+  // Phase 2: Advanced pagination functions
+  getPageInfo,
+  getPageProducts,
+  getAllProducts,
+  getProductsInRange,
+  jumpToFirstPage,
+  jumpToLastPage,
+  canNavigateNext,
+  canNavigatePrevious,
+  getPageRange,
+  validatePageNumber,
 }

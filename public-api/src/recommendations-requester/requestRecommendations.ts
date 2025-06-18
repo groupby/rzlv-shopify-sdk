@@ -148,11 +148,12 @@ export async function requestRecommendations(
 
     const recsResults = await fetchRecommendations(shopTenant, appEnv, recsOptions);
 
+    // Phase 3: Fix API response mapping - API returns 'records' not 'products'
     const formattedResponse: RequestRecsResponse = {
-      products: recsResults.products || [],
+      products: recsResults.records || recsResults.products || [],
       metadata: {
         modelName: recsOptions.name,
-        totalCount: recsResults.totalCount || recsResults.products?.length || 0,
+        totalCount: recsResults.totalCount || recsResults.records?.length || recsResults.products?.length || 0,
         requestId: recsResults.requestId,
       },
       rawResponse: recsResults,
