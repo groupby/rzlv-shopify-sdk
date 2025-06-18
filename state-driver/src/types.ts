@@ -27,7 +27,7 @@ export enum SearchSource {
 export interface SearchParams {
   gbi_query: string;
   pagesize: string;
-  refinements: ReadonlyArray<string>;
+  refinements: string[];
   page: number;
   sort_by: string;
   type: string;

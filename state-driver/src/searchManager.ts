@@ -4,6 +4,7 @@ import { requestSearch, RequestSearchResponse } from '@rzlv/public-api-sdk/reque
 import { updateOutputStore } from './searchOutputStore';
 import type { SearchParams } from './types';
 import type { ShopifyConfig } from '@rzlv/public-api-sdk/fetchSfProducts';
+import type { AppEnv } from '@rzlv/public-api-sdk/searchUtils.types';
 import { PaginationType } from './types';
 import { debugLog } from './debugLogger';
 
@@ -21,7 +22,7 @@ interface SearchManagerParams {
     page: number;
     pageSize: number;
     sortBy?: string;
-    refinements?: readonly string[];
+    refinements?: string[];
     collectionId?: string;
     paginationType: PaginationType;
   };
@@ -47,7 +48,7 @@ export const searchFx = createEffect(
     debugLog('Search Manager', 'searchFx triggered with params', params);
     return await requestSearch(
       params.shopTenant,
-      params.appEnv,
+      params.appEnv as AppEnv,
       params.searchOptions,
       (searchManagerConfig.mergeShopifyData ?? true),
       (searchManagerConfig.shopifyConfig !== undefined ? searchManagerConfig.shopifyConfig : undefined)

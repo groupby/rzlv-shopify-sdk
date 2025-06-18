@@ -1,6 +1,7 @@
 import { createStore, createEvent, createEffect, sample } from 'effector';
 import { requestRecommendations, RequestRecsResponse, AppEnv, RecsProduct } from '../../public-api/src/recommendations-requester/requestRecommendations';
 import { debugLog } from './debugLogger';
+import { ShopifyConfig } from '../../public-api/src/search-requester/fetchStorefrontProducts';
 
 export interface RecsManagerConfig {
   shopTenant: string;
@@ -21,6 +22,7 @@ export interface RecsManagerConfig {
   mergeShopifyData?: boolean;
   maxApiResults?: number; // Maximum results to request from API
   cacheTTL?: number; // Cache time-to-live in milliseconds
+  shopifyConfig?: ShopifyConfig;
 }
 
 export interface RecsManagerState {
@@ -163,7 +165,9 @@ function setCachedData(cacheKey: string, data: RequestRecsResponse, config: Recs
   // Clean up old cache entries (keep only last 10)
   if (recsCache.size > 10) {
     const oldestKey = recsCache.keys().next().value;
-    recsCache.delete(oldestKey);
+    if (oldestKey) {
+      recsCache.delete(oldestKey);
+    }
   }
 }
 
@@ -197,7 +201,8 @@ export const fetchRecsFx = createEffect(
         loginId: config.loginId,
         filters: config.filters,
       },
-      config.mergeShopifyData !== undefined ? config.mergeShopifyData : true
+      config.mergeShopifyData !== undefined ? config.mergeShopifyData : true,
+      config.shopifyConfig
     );
 
     // Cache the response

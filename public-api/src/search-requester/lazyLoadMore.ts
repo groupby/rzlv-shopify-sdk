@@ -5,6 +5,7 @@ import {
 } from '../utils/searchUtils';
 
 import type { SearchResult, ProductDetail, AppEnv } from '../utils/searchUtils.types';
+import type { ShopifyConfig } from './fetchStorefrontProducts';
 
 /**
  * Options for lazy loading more search results.
@@ -75,7 +76,8 @@ export async function lazyLoadMore(
   currentPage: number,
   pageSize: number,
   searchOptions: LazyLoadMoreOptions,
-  mergeShopifyData: boolean = true
+  mergeShopifyData: boolean = true,
+  shopifyConfig?: ShopifyConfig
 ): Promise<SearchResult | ProductDetail[]> {
   try {
     const nextPage = currentPage + 1;
@@ -94,7 +96,7 @@ export async function lazyLoadMore(
     const searchResults = await fetchSearchResults(shopTenant, appEnv, gbiSearchArgs);
 
     if (mergeShopifyData) {
-      const mergedProducts = await transformProductsForVariantRelevancy(searchResults);
+      const mergedProducts = await transformProductsForVariantRelevancy(searchResults, shopifyConfig!);
       return mergedProducts;
     } else {
       return searchResults;

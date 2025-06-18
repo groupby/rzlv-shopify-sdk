@@ -87,12 +87,14 @@ export interface ModifiedQueryResult {
 
 export interface ProductRecord {
   allMeta: {
+    id?: string;
     attributes: {
       handle: {
         text: string[];
       };
     };
     title: string;
+    variants?: Array<{ id: string }>;
   };
 }
 

@@ -1,6 +1,6 @@
-import { getShopifyConfig } from '../search-requester/shopifyConfig';
 import { transformProductsForVariantRelevancy } from '../utils/searchUtils';
 import { AppEnv } from '../utils/searchUtils.types';
+import { ShopifyConfig } from '../search-requester/fetchStorefrontProducts';
 
 export { AppEnv };
 
@@ -126,7 +126,8 @@ export async function requestRecommendations(
   shopTenant: string,
   appEnv: AppEnv,
   recsOptions: RequestRecsOptions,
-  mergeShopifyData: boolean = true
+  mergeShopifyData: boolean = true,
+  shopifyConfig?: ShopifyConfig
 ): Promise<RequestRecsResponse> {
   try {
     if (!recsOptions.name) {
@@ -173,7 +174,7 @@ export async function requestRecommendations(
               }
             }
           }))
-        });
+        }, shopifyConfig!);
 
         return {
           products: mergedProducts as unknown as RecsProduct[],

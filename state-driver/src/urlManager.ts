@@ -33,10 +33,10 @@ interface InitUrlManagerParams {
  * This function reads URL parameters such as 'gbi-query', 'pagesize', 'page', 'sort_by',
  * 'refinement', and 'type', and maps them to the SearchParams structure.
  *
- * @param config - An object containing defaultPagesize and source.
+ * @param config - An object containing defaultPagesize, source, and paginationType.
  * @returns The parsed search parameters.
  */
-function parseUrlToSearchParams({ defaultPagesize, source }: InitUrlManagerParams): SearchParams {
+function parseUrlToSearchParams({ defaultPagesize, source, paginationType }: InitUrlManagerParams): SearchParams {
   const urlParams = new URLSearchParams(window.location.search);
 
   const gbi_query = urlParams.get('gbi-query') || '';
@@ -55,6 +55,7 @@ function parseUrlToSearchParams({ defaultPagesize, source }: InitUrlManagerParam
     sort_by,
     type,
     source, // Use the provided source.
+    paginationType, // Include the pagination type
   };
 }
 
@@ -88,11 +89,10 @@ export function initUrlManager({
   debugLog('URL Manager', 'Initializing URL Manager');
 
   // Parse URL parameters and update the Input Store.
-  const initialParams = parseUrlToSearchParams({ defaultPagesize, source });
+  const initialParams = parseUrlToSearchParams({ defaultPagesize, source, paginationType });
   if (collectionId) {
     initialParams.collectionId = collectionId;
   }
-  initialParams.paginationType = paginationType;
 
   // Merge initialParams into the current Input Store state.
   // Set hasSubmitted to true only if the URL indicates an actual search action.

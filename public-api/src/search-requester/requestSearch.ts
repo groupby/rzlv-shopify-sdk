@@ -120,7 +120,7 @@ export async function requestSearch(
     // If merging is enabled, merge the Shopify data.
     if (mergeShopifyData) {
     
-      const mergedProducts = await transformProductsForVariantRelevancy(searchResults, shopifyConfig);
+      const mergedProducts = await transformProductsForVariantRelevancy(searchResults, shopifyConfig!);
 
       // Return the merged products along with the raw response.
       return { mergedProducts, rawResponse: searchResults };
