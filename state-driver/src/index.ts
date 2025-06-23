@@ -14,8 +14,35 @@ import { requestSearch } from '@rzlv/public-api-sdk/requestSearch';
 import { handleNextPage } from './ui-functions/handleNextPage';
 import { handlePreviousPage } from './ui-functions/handlePreviousPage';
 import { applyRange } from './ui-functions/applyRange';
-// autocomplete from public API
-import { requestAutocomplete, requestAutocompleteWithSearch } from '@rzlv/public-api-sdk';
+// autocomplete and recommendations from public API
+import { requestAutocomplete, requestAutocompleteWithSearch, requestRecommendations } from '@rzlv/public-api-sdk';
+// recommendations manager
+import {
+  initRecsManager,
+  fetchRecommendations,
+  getCurrentPageProducts,
+  nextPage,
+  previousPage,
+  setPageSize,
+  goToPage,
+  getRecsManagerState,
+  clearCache,
+  refreshRecommendations,
+  getInstanceConfig,
+  getAllInstances,
+  recsManagerStore,
+  // Advanced pagination functions
+  getPageInfo,
+  getPageProducts,
+  getAllProducts,
+  getProductsInRange,
+  jumpToFirstPage,
+  jumpToLastPage,
+  canNavigateNext,
+  canNavigatePrevious,
+  getPageRange,
+  validatePageNumber
+} from './recsManager';
 
 export {
   handleRefinementChange,
@@ -34,4 +61,31 @@ export {
   applyRange,
   requestAutocomplete,
   requestAutocompleteWithSearch,
+  // Recommendations API
+  requestRecommendations,
+  // Recommendations Manager
+  initRecsManager,
+  fetchRecommendations,
+  getCurrentPageProducts,
+  nextPage,
+  previousPage,
+  setPageSize,
+  goToPage,
+  getRecsManagerState,
+  clearCache,
+  refreshRecommendations,
+  getInstanceConfig,
+  getAllInstances,
+  recsManagerStore,
+  // Advanced pagination functions
+  getPageInfo,
+  getPageProducts,
+  getAllProducts,
+  getProductsInRange,
+  jumpToFirstPage,
+  jumpToLastPage,
+  canNavigateNext,
+  canNavigatePrevious,
+  getPageRange,
+  validatePageNumber,
 }

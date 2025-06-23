@@ -1,9 +1,10 @@
 import { createEffect, sample } from 'effector';
 import { searchInputStore, updateInputStore } from './searchInputStore';
-import { requestSearch, RequestSearchResponse } from '@rzlv/public-api-sdk/requestSearch';
+import { requestSearch, RequestSearchResponse, RequestSearchOptions } from '@rzlv/public-api-sdk/requestSearch';
 import { updateOutputStore } from './searchOutputStore';
 import type { SearchParams } from './types';
 import type { ShopifyConfig } from '@rzlv/public-api-sdk/fetchSfProducts';
+import type { AppEnv } from '@rzlv/public-api-sdk/searchUtils.types';
 import { PaginationType } from './types';
 import { debugLog } from './debugLogger';
 
@@ -21,7 +22,7 @@ interface SearchManagerParams {
     page: number;
     pageSize: number;
     sortBy?: string;
-    refinements?: readonly string[];
+    refinements?: ReadonlyArray<string>;
     collectionId?: string;
     paginationType: PaginationType;
   };
@@ -45,10 +46,23 @@ export interface SearchManagerConfig {
 export const searchFx = createEffect(
   async (params: SearchManagerParams): Promise<RequestSearchResponse> => {
     debugLog('Search Manager', 'searchFx triggered with params', params);
+    
+    // Convert searchOptions to RequestSearchOptions format
+    const requestOptions: RequestSearchOptions = {
+      query: params.searchOptions.query,
+      collection: params.searchOptions.collection,
+      area: params.searchOptions.area,
+      page: params.searchOptions.page,
+      pageSize: params.searchOptions.pageSize,
+      sortBy: params.searchOptions.sortBy,
+      refinements: params.searchOptions.refinements ? [...params.searchOptions.refinements] : undefined,
+      collectionId: params.searchOptions.collectionId,
+    };
+    
     return await requestSearch(
       params.shopTenant,
-      params.appEnv,
-      params.searchOptions,
+      params.appEnv as AppEnv,
+      requestOptions,
       (searchManagerConfig.mergeShopifyData ?? true),
       (searchManagerConfig.shopifyConfig !== undefined ? searchManagerConfig.shopifyConfig : undefined)
     );
@@ -101,7 +115,7 @@ export function initSearchManager(config: SearchManagerConfig): void {
           page: inputState.page,
           pageSize: parseInt(inputState.pagesize, 10),
           sortBy: inputState.sort_by,
-          refinements: inputState.refinements,
+          refinements: inputState.refinements ? [...inputState.refinements] : undefined,
           // Use inputState.collectionId if available; otherwise fallback to static config.
           collectionId: inputState.collectionId || searchManagerConfig.collectionId,
           paginationType: inputState.paginationType,

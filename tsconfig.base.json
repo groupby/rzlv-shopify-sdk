@@ -1,9 +1,11 @@
 {
     "compilerOptions": {
+      "baseUrl": ".",
       "paths": {
         "@rzlv/public-api-sdk": ["public-api/src/index.ts"],
         "@rzlv/public-api-sdk/requestSearch": ["public-api/src/search-requester/requestSearch.ts"],
-        "@rzlv/public-api-sdk/fetchSfProducts": ["public-api/src/search-requester/fetchStorefrontProducts.ts"]         
+        "@rzlv/public-api-sdk/fetchSfProducts": ["public-api/src/search-requester/fetchStorefrontProducts.ts"],
+        "@rzlv/public-api-sdk/searchUtils.types": ["public-api/src/utils/searchUtils.types.ts"]
       }
     }
   }

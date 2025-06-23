@@ -33,6 +33,6 @@ export interface SearchParams {
   type: string;
   source: SearchSource;
   collectionId?: string; // Optional, used for collection pages. Sourced from Shopify `collection` object.
-  paginationType: PaginationType; // comes directly from Shopify's `block.settings.page_handling_type` passed into URL Manager.
   hasSubmitted?: boolean; // Flag to indicate an explicit search submission to prevent default Input Store state from trigger a search via the Search Manager on first load
+  paginationType: PaginationType; // Passed through from initialization, not parsed from URL
 }

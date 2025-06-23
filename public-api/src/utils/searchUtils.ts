@@ -286,7 +286,7 @@ export function reorderVariantsByRelevancy(shopifyProducts: ProductDetail[], sit
     }
 
     // Extract the relevant variant IDs from the Site Search product
-    const relevantVariantIds = siteSearchProduct.allMeta?.variants.map((variant: { id: string }) => variant.id.toString());
+    const relevantVariantIds = siteSearchProduct.allMeta?.variants?.map((variant: { id: string }) => variant.id.toString());
 
     if (!relevantVariantIds) {
       // If no relevant variant IDs are found, return the product as is
@@ -295,8 +295,8 @@ export function reorderVariantsByRelevancy(shopifyProducts: ProductDetail[], sit
 
     // Reorder variants so that they match the order of relevant variant IDs from the Site Search product
     const reorderedVariants = relevantVariantIds
-      .map(id => product.variants.find(variant => variant.id.toString() === id))
-      .filter((variant): variant is ProductVariant => Boolean(variant));
+      .map((id: string) => product.variants.find(variant => variant.id.toString() === id))
+      .filter((variant: ProductVariant | undefined): variant is ProductVariant => Boolean(variant));
 
     // Include the remaining variants that were not in the relevant list
     const remainingVariants = product.variants.filter(variant => !relevantVariantIds.includes(variant.id.toString()));
@@ -326,7 +326,8 @@ export async function transformProductsForVariantRelevancy(siteSearchProducts: P
   }
 
   // Reorder variants within each product based on relevancy from Site Search API
-  const reorderedProducts = reorderVariantsByRelevancy(shopifyProducts, siteSearchProducts.records);
+  const validShopifyProducts = shopifyProducts.filter((product): product is ProductDetail => product !== null);
+  const reorderedProducts = reorderVariantsByRelevancy(validShopifyProducts, siteSearchProducts.records);
   return reorderedProducts;
 }
 

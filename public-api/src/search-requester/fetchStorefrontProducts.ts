@@ -90,14 +90,14 @@ export async function fetchStorefrontProducts(handles: string[], shopifyConfig: 
     }
 
     const data = await response.json();
-    const products = data.data?.products?.edges?.map(edge => edge.node) || [];
+    const products = data.data?.products?.edges?.map((edge: any) => edge.node) || [];
 
     // Map to ProductDetail type
     const mappedProducts = handles.map(handle => {
-      const product = products.find(p => p.handle === handle);
+      const product = products.find((p: any) => p.handle === handle);
       if (!product) return null;
 
-      const variants = product.variants.edges.map(v => ({
+      const variants = product.variants.edges.map((v: any) => ({
         ...v.node,
         id: parseInt(v.node.id.split('/').pop() || '0', 10), // Convert GID to number
         price: parseFloat(v.node.price.amount),
@@ -136,11 +136,11 @@ export async function fetchStorefrontProducts(handles: string[], shopifyConfig: 
         compare_at_price_max: parseFloat(product.compareAtPriceRange.maxVariantPrice.amount),
         compare_at_price_varies: product.compareAtPriceRange.minVariantPrice.amount !== product.compareAtPriceRange.maxVariantPrice.amount,
         variants,
-        images: product.images.edges.map(i => i.node.url),
+        images: product.images.edges.map((i: any) => i.node.url),
         featured_image: product.featuredImage?.url || (product.images.edges[0]?.node.url || ''),
         options: [], // Not fetched; add if needed
         url: `/products/${product.handle}`,
-        media: product.images.edges.map(i => ({
+        media: product.images.edges.map((i: any) => ({
           alt: i.node.altText || null,
           id: 0, // Placeholder; adjust if needed
           position: 0,
