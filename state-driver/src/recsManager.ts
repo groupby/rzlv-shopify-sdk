@@ -1,7 +1,36 @@
 import { createStore, createEvent, createEffect, sample } from 'effector';
 import { requestRecommendations, RequestRecsResponse, AppEnv, RecsProduct } from '../../public-api/src/recommendations-requester/requestRecommendations';
-import { debugLog } from './debugLogger';
+import { debugLog, sdkConfig } from './debugLogger';
 import { ShopifyConfig } from '../../public-api/src/search-requester/fetchStorefrontProducts';
+
+// Custom error classes for better error handling
+export class RecsManagerError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RecsManagerError';
+  }
+}
+
+export class RecsConfigError extends RecsManagerError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RecsConfigError';
+  }
+}
+
+export class RecsInstanceError extends RecsManagerError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RecsInstanceError';
+  }
+}
+
+export class RecsFetchError extends RecsManagerError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RecsFetchError';
+  }
+}
 
 export interface RecsManagerConfig {
   shopTenant: string;
@@ -9,7 +38,7 @@ export interface RecsManagerConfig {
   name: string;
   collection: string;
   fields?: string[];
-  uiPageSize: number; // Client-side pagination page size
+  uiPageSize: number;
   productID?: string;
   visitorId?: string;
   loginId?: string;
@@ -20,9 +49,10 @@ export interface RecsManagerConfig {
     required: string;
   }>;
   mergeShopifyData?: boolean;
-  maxApiResults?: number; // Maximum results to request from API
-  cacheTTL?: number; // Cache time-to-live in milliseconds
+  maxApiResults?: number;
+  cacheTTL?: number;
   shopifyConfig?: ShopifyConfig;
+  debug?: boolean;
 }
 
 export interface RecsManagerState {
@@ -35,7 +65,6 @@ export interface RecsManagerState {
   rawResponse: any;
   lastFetched: number | null;
   cacheKey: string | null;
-  // Phase 2: Enhanced pagination state
   totalProducts: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
@@ -49,25 +78,26 @@ export interface CacheEntry {
   data: RequestRecsResponse;
   timestamp: number;
   config: RecsManagerConfig;
+  expiresAt: number;
 }
 
 // Cache management
 const recsCache = new Map<string, CacheEntry>();
 const DEFAULT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const DEFAULT_MAX_API_RESULTS = 100; // Request up to 100 results from API
+const DEFAULT_MAX_API_RESULTS = 100;
+const MAX_CACHE_SIZE = 20; // Maximum number of entries in cache
 
 // Initial state for the RecsManager
 const initialState: RecsManagerState = {
   products: [],
   currentPage: 1,
-  uiPageSize: 5, // Default UI page size
+  uiPageSize: 5,
   totalPages: 0,
   loading: false,
   error: null,
   rawResponse: null,
   lastFetched: null,
   cacheKey: null,
-  // Phase 2: Enhanced pagination state
   totalProducts: 0,
   hasNextPage: false,
   hasPreviousPage: false,
@@ -77,7 +107,6 @@ const initialState: RecsManagerState = {
   isLastPage: true,
 };
 
-// Phase 2: Pagination calculation utilities
 interface PaginationInfo {
   totalPages: number;
   totalProducts: number;
@@ -123,7 +152,10 @@ export const updateRecsManagerState = createEvent<RecsManagerStateUpdater>();
 export const recsManagerStore = createStore<RecsManagerState>(initialState)
   .on(updateRecsManagerState, (state, updater) => {
     const newState = updater(state);
-    debugLog('Recs Manager Store', 'State updated:', newState);
+    const hasDebugInstance = Array.from(recsManagerInstances.values()).some(instance => instance.config?.debug);
+    if (hasDebugInstance) {
+      debugLog('Recs Manager Store', 'State updated:', newState);
+    }
     return newState;
   });
 
@@ -146,8 +178,8 @@ function getCachedData(cacheKey: string, cacheTTL: number): CacheEntry | null {
   const cached = recsCache.get(cacheKey);
   if (!cached) return null;
 
-  const isExpired = Date.now() - cached.timestamp > cacheTTL;
-  if (isExpired) {
+  const now = Date.now();
+  if (now >= cached.expiresAt) {
     recsCache.delete(cacheKey);
     return null;
   }
@@ -155,38 +187,77 @@ function getCachedData(cacheKey: string, cacheTTL: number): CacheEntry | null {
   return cached;
 }
 
+/**
+ * Cleans up expired cache entries
+ * @param debug Whether to log debug information
+ */
+function cleanupExpiredCache(debug: boolean = false): void {
+  const log = logger(debug);
+  const now = Date.now();
+  let expiredCount = 0;
+  
+  recsCache.forEach((entry, key) => {
+    if (now >= entry.expiresAt) {
+      recsCache.delete(key);
+      expiredCount++;
+    }
+  });
+  
+  if (expiredCount > 0) {
+    log('Recs Manager', `Cache cleanup: removed ${expiredCount} expired entries. Remaining: ${recsCache.size}`);
+  }
+}
+
 function setCachedData(cacheKey: string, data: RequestRecsResponse, config: RecsManagerConfig): void {
+  const now = Date.now();
+  const cacheTTL = config.cacheTTL || DEFAULT_CACHE_TTL;
+  
   recsCache.set(cacheKey, {
     data,
-    timestamp: Date.now(),
+    timestamp: now,
+    expiresAt: now + cacheTTL,
     config
   });
 
-  // Clean up old cache entries (keep only last 10)
-  if (recsCache.size > 10) {
-    const oldestKey = recsCache.keys().next().value;
-    if (oldestKey) {
-      recsCache.delete(oldestKey);
-    }
+  // If cache exceeds max size, remove oldest entries
+  if (recsCache.size > MAX_CACHE_SIZE) {
+    // Sort entries by timestamp (oldest first)
+    const entries = Array.from(recsCache.entries());
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+    
+    // Remove oldest entries until we're back to the limit
+    const entriesToRemove = entries.slice(0, entries.length - MAX_CACHE_SIZE);
+    entriesToRemove.forEach(([key]) => recsCache.delete(key));
+    
+    const log = logger(config.debug || false);
+    log('Recs Manager', `Cache size limit reached. Removed ${entriesToRemove.length} oldest entries. Current size: ${recsCache.size}`);
+  }
+  
+  // Periodically clean up expired entries
+  cleanupExpiredCache(config.debug || false);
+}
+
+const logger = (log: boolean) => (...params: Parameters<typeof debugLog>) => {
+  if (log) {
+    debugLog(...params);
   }
 }
 
 // API fetch effect with proper caching
 export const fetchRecsFx = createEffect(
   async (config: RecsManagerConfig): Promise<RequestRecsResponse> => {
-    debugLog('Recs Manager', 'fetchRecsFx triggered with config', config);
+    const log = logger(config.debug || false);
+    log('Recs Manager', 'fetchRecsFx triggered with config', config);
 
     const cacheKey = generateCacheKey(config);
     const cacheTTL = config.cacheTTL || DEFAULT_CACHE_TTL;
 
-    // Check cache first
     const cached = getCachedData(cacheKey, cacheTTL);
     if (cached) {
-      debugLog('Recs Manager', 'Returning cached data', cached.data);
+      log('Recs Manager', 'Returning cached data', cached.data);
       return cached.data;
     }
 
-    // Request ALL results from API (not paginated)
     const maxResults = config.maxApiResults || DEFAULT_MAX_API_RESULTS;
     const apiResponse = await requestRecommendations(
       config.shopTenant,
@@ -195,7 +266,7 @@ export const fetchRecsFx = createEffect(
         name: config.name,
         fields: config.fields || ['*'],
         collection: config.collection,
-        pageSize: maxResults, // Request maximum results
+        pageSize: maxResults,
         productID: config.productID,
         visitorId: config.visitorId,
         loginId: config.loginId,
@@ -205,7 +276,6 @@ export const fetchRecsFx = createEffect(
       config.shopifyConfig
     );
 
-    // Cache the response
     setCachedData(cacheKey, apiResponse, config);
 
     return apiResponse;
@@ -213,55 +283,120 @@ export const fetchRecsFx = createEffect(
 );
 
 // Multi-instance support
-const recsManagerInstances = new Map<string, RecsManagerConfig>();
+interface RecsManagerInstance {
+  config: RecsManagerConfig;
+  initialized: boolean;
+  cacheKey: string;
+  lastUsed: number;
+  watchersInitialized: boolean;
+}
+
+const recsManagerInstances = new Map<string, RecsManagerInstance>();
 
 function validateConfig(config: RecsManagerConfig): void {
   if (!config.shopTenant) {
-    throw new Error('Shop tenant is required for RecsManager');
+    throw new RecsConfigError('Shop tenant is required for RecsManager');
   }
 
   if (!config.name) {
-    throw new Error('Recommendation model name is required for RecsManager');
+    throw new RecsConfigError('Recommendation model name is required for RecsManager');
   }
 
   if (!config.collection) {
-    throw new Error('Collection name is required for RecsManager');
+    throw new RecsConfigError('Collection name is required for RecsManager');
   }
 
   if (!config.uiPageSize || config.uiPageSize <= 0) {
-    throw new Error('UI page size must be a positive number for RecsManager');
+    throw new RecsConfigError('UI page size must be a positive number for RecsManager');
   }
 
   if (config.maxApiResults && config.maxApiResults <= 0) {
-    throw new Error('Max API results must be a positive number if specified');
+    throw new RecsConfigError('Max API results must be a positive number if specified');
   }
 
   if (config.cacheTTL && config.cacheTTL < 0) {
-    throw new Error('Cache TTL must be non-negative if specified');
+    throw new RecsConfigError('Cache TTL must be non-negative if specified');
   }
 }
 
-export function initRecsManager(config: RecsManagerConfig, instanceId: string = 'default'): void {
-  debugLog('Recs Manager', 'Initializing with config', { config, instanceId });
+// Set up periodic cache cleanup
+let cacheCleanupInterval: number | null = null;
+
+/**
+ * Initializes the RecsManager with the given configuration
+ * @param config Configuration for the RecsManager
+ * @param instanceId Optional instance ID for multi-instance support
+ */
+/**
+ * Checks if a RecsManager instance exists
+ * @param instanceId The instance ID to check
+ * @returns True if the instance exists, false otherwise
+ */
+export function hasRecsManagerInstance(instanceId: string = 'default'): boolean {
+  return recsManagerInstances.has(instanceId);
+}
+
+/**
+ * Gets information about all RecsManager instances
+ * @returns Array of instance IDs and their status
+ */
+export function getRecsManagerInstances(): Array<{ id: string; initialized: boolean; lastUsed: number }> {
+  return Array.from(recsManagerInstances.entries()).map(([id, instance]) => ({
+    id,
+    initialized: instance.initialized,
+    lastUsed: instance.lastUsed
+  }));
+}
+
+/**
+ * Initializes the RecsManager with the given configuration
+ * @param config Configuration for the RecsManager
+ * @param instanceId Optional instance ID for multi-instance support
+ * @returns The instance ID
+ */
+export function initRecsManager(
+  config: RecsManagerConfig, 
+  instanceId: string = 'default',
+): string {
+  const log = logger(config.debug || false);
+  log('Recs Manager', 'Initializing with config', { config, instanceId });
 
   validateConfig(config);
-
-  // Store instance configuration
-  recsManagerInstances.set(instanceId, config);
-
+  
   const cacheKey = generateCacheKey(config);
+  
+  // Check if instance already exists
+  if (recsManagerInstances.has(instanceId)) {
+    const existingInstance = recsManagerInstances.get(instanceId)!;
+    log('Recs Manager', `Instance '${instanceId}' already exists. Updating configuration.`);
+    
+    // Update the existing instance
+    existingInstance.config = config;
+    existingInstance.cacheKey = cacheKey;
+    existingInstance.lastUsed = Date.now();
+    
+    recsManagerInstances.set(instanceId, existingInstance);
+  } else {
+    // Create a new instance
+    recsManagerInstances.set(instanceId, {
+      config,
+      initialized: false,
+      cacheKey,
+      lastUsed: Date.now(),
+      watchersInitialized: false
+    });
+  }
 
-  // Initialize store state for this instance
   updateRecsManagerState((current) => ({
     ...initialState,
     uiPageSize: config.uiPageSize,
     cacheKey,
   }));
 
-  // Set up effect watchers (these are global but handle multiple instances)
-  if (!fetchRecsFx.pending.getState) {
+  // Setup watchers for fetch effects if not already done
+  if (typeof fetchRecsFx.pending.getState === 'function' && !fetchRecsFx.pending.getState()) {
     fetchRecsFx.pending.watch((isPending) => {
-      debugLog('Recs Manager', 'fetchRecsFx pending:', isPending);
+      log('Recs Manager', 'fetchRecsFx pending:', isPending);
       if (isPending) {
         updateRecsManagerState((current) => ({
           ...current,
@@ -272,16 +407,14 @@ export function initRecsManager(config: RecsManagerConfig, instanceId: string = 
     });
 
     fetchRecsFx.done.watch(({ result, params }) => {
-      debugLog('Recs Manager', 'fetchRecsFx done:', result);
+      log('Recs Manager', 'fetchRecsFx done:', result);
       const resultCacheKey = generateCacheKey(params);
 
       updateRecsManagerState((current) => {
-        // Only update if this result is for the current instance
         if (current.cacheKey !== resultCacheKey) {
           return current;
         }
 
-        // Phase 2: Enhanced pagination calculation
         const paginationInfo = calculatePaginationInfo(
           current.currentPage,
           current.uiPageSize,
@@ -295,18 +428,16 @@ export function initRecsManager(config: RecsManagerConfig, instanceId: string = 
           error: null,
           rawResponse: result.rawResponse,
           lastFetched: Date.now(),
-          // Update all pagination fields
           ...paginationInfo,
         };
       });
     });
 
     fetchRecsFx.fail.watch(({ error, params }) => {
-      debugLog('Recs Manager', 'fetchRecsFx error:', error);
+      log('Recs Manager', 'fetchRecsFx error:', error);
       const errorCacheKey = generateCacheKey(params);
 
       updateRecsManagerState((current) => {
-        // Only update if this error is for the current instance
         if (current.cacheKey !== errorCacheKey) {
           return current;
         }
@@ -320,224 +451,390 @@ export function initRecsManager(config: RecsManagerConfig, instanceId: string = 
     });
   }
 
-  // Start loading recommendations
+  // Mark instance as initialized
+  const instance = recsManagerInstances.get(instanceId)!;
+  instance.initialized = true;
+  instance.lastUsed = Date.now();
+  
+  // Setup watchers
+  setupGlobalWatchers();
+  setupWatchers(instanceId);
+  
   fetchRecommendations(instanceId).catch(error => {
-    console.error('Failed to load initial recommendations:', error);
+    const log = logger(config.debug || false);
+    log('Recs Manager', 'Failed to load initial recommendations:', error);
+    // Error state is already handled in fetchRecommendations
   });
+  
+  return instanceId;
 }
 
-export async function fetchRecommendations(instanceId: string = 'default'): Promise<RecsProduct[]> {
-  const config = recsManagerInstances.get(instanceId);
-  if (!config) {
-    throw new Error(`RecsManager instance '${instanceId}' is not initialized. Call initRecsManager() first.`);
+/**
+ * Validates that an instance exists and is initialized
+ * @param instanceId The instance ID to validate
+ * @returns The instance configuration
+ * @throws RecsInstanceError if the instance doesn't exist or isn't initialized
+ */
+function validateInstance(instanceId: string): RecsManagerConfig {
+  const instance = recsManagerInstances.get(instanceId);
+  
+  if (!instance) {
+    throw new RecsInstanceError(`RecsManager instance '${instanceId}' does not exist. Call initRecsManager() first.`);
   }
+  
+  if (!instance.initialized) {
+    throw new RecsInstanceError(`RecsManager instance '${instanceId}' exists but is not fully initialized.`);
+  }
+  
+  // Update last used timestamp
+  instance.lastUsed = Date.now();
+  
+  return instance.config;
+}
+
+/**
+ * Fetches recommendations using the specified instance
+ * @param instanceId The instance ID to use
+ * @returns Promise resolving to an array of recommendation products
+ */
+export async function fetchRecommendations(instanceId: string = 'default'): Promise<RecsProduct[]> {
+  const config = validateInstance(instanceId);
 
   try {
     const result = await fetchRecsFx(config);
     return result.products;
   } catch (error) {
-    console.error('Error fetching recommendations:', error);
-    return [];
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const recsFetchError = new RecsFetchError(`Failed to fetch recommendations: ${errorMessage}`);
+    
+    // Update store with error state
+    updateRecsManagerState((current) => ({
+      ...current,
+      loading: false,
+      error: recsFetchError.message,
+    }));
+    
+    // Re-throw as a RecsFetchError for better error handling
+    throw recsFetchError;
   }
 }
 
+/**
+ * Gets the products for the current page
+ * @param instanceId The instance ID to use
+ * @returns Array of products for the current page
+ */
 export function getCurrentPageProducts(instanceId: string = 'default'): RecsProduct[] {
+  const config = validateInstance(instanceId);
+  const log = logger(config.debug || false);
   const state = recsManagerStore.getState();
-
+  
   if (!state.products || state.products.length === 0) {
-    debugLog('Recs Manager', 'getCurrentPageProducts: No products available');
+    log('Recs Manager', 'getCurrentPageProducts: No products available');
     return [];
   }
 
-  // Phase 2: Use calculated pagination indices for better accuracy
-  const products = state.products.slice(state.pageStartIndex, state.pageEndIndex);
-
-  debugLog('Recs Manager', 'getCurrentPageProducts:', {
+  log('Recs Manager', 'getCurrentPageProducts:', {
     currentPage: state.currentPage,
-    pageSize: state.uiPageSize,
-    startIndex: state.pageStartIndex,
-    endIndex: state.pageEndIndex,
-    productsReturned: products.length,
-    totalProducts: state.totalProducts
+    uiPageSize: state.uiPageSize,
+    totalProducts: state.products.length,
   });
 
-  return products;
+  const startIndex = (state.currentPage - 1) * state.uiPageSize;
+  const endIndex = startIndex + state.uiPageSize;
+  return state.products.slice(startIndex, endIndex);
 }
 
 export function getRecsManagerState(): RecsManagerState {
   return recsManagerStore.getState();
 }
 
-export function nextPage(): void {
+/**
+ * Navigates to the next page of recommendations
+ * @param instanceId The instance ID to use
+ */
+export function nextPage(instanceId: string = 'default'): void {
+  const config = validateInstance(instanceId);
+  const log = logger(config.debug || false);
   const state = recsManagerStore.getState();
-
-  if (state.totalProducts === 0) {
-    debugLog('Recs Manager', 'Cannot navigate: no products loaded');
+  
+  if (!state.products || state.products.length === 0) {
+    log('Recs Manager', 'Cannot navigate: no products loaded');
     return;
   }
 
-  updateRecsManagerState((current) => {
-    // Phase 2: Enhanced wraparound logic with better state management
-    const nextPageNum = current.isLastPage ? 1 : current.currentPage + 1;
-    const paginationInfo = calculatePaginationInfo(
-      nextPageNum,
-      current.uiPageSize,
-      current.totalProducts
-    );
+  const totalPages = Math.ceil(state.products.length / state.uiPageSize);
+  let newPage: number;
+  
+  if (state.currentPage >= totalPages) {
+    newPage = 1;
+  } else {
+    newPage = state.currentPage + 1;
+  }
 
-    debugLog('Recs Manager', 'nextPage navigation:', {
-      from: current.currentPage,
-      to: nextPageNum,
-      isWraparound: current.isLastPage,
-      totalPages: paginationInfo.totalPages
-    });
-
-    return {
-      ...current,
-      currentPage: nextPageNum,
-      ...paginationInfo,
-    };
+  log('Recs Manager', 'nextPage navigation:', {
+    currentPage: state.currentPage,
+    newPage,
+    totalPages,
+    totalProducts: state.products.length,
   });
 
-  debugLog('Recs Manager', 'Navigated to next page', recsManagerStore.getState().currentPage);
+  updateRecsManagerState((current) => ({
+    ...current,
+    currentPage: newPage,
+  }));
+
+  log('Recs Manager', 'Navigated to next page', recsManagerStore.getState().currentPage);
 }
 
-export function previousPage(): void {
+/**
+ * Navigates to the previous page of recommendations
+ * @param instanceId The instance ID to use
+ */
+export function previousPage(instanceId: string = 'default'): void {
+  const config = validateInstance(instanceId);
+  const log = logger(config.debug || false);
   const state = recsManagerStore.getState();
-
-  if (state.totalProducts === 0) {
-    debugLog('Recs Manager', 'Cannot navigate: no products loaded');
+  
+  if (!state.products || state.products.length === 0) {
+    log('Recs Manager', 'Cannot navigate: no products loaded');
     return;
   }
 
-  updateRecsManagerState((current) => {
-    // Phase 2: Enhanced wraparound logic with better state management
-    const prevPageNum = current.isFirstPage ? current.totalPages : current.currentPage - 1;
-    const paginationInfo = calculatePaginationInfo(
-      prevPageNum,
-      current.uiPageSize,
-      current.totalProducts
-    );
-
-    debugLog('Recs Manager', 'previousPage navigation:', {
-      from: current.currentPage,
-      to: prevPageNum,
-      isWraparound: current.isFirstPage,
-      totalPages: paginationInfo.totalPages
-    });
-
-    return {
-      ...current,
-      currentPage: prevPageNum,
-      ...paginationInfo,
-    };
-  });
-
-  debugLog('Recs Manager', 'Navigated to previous page', recsManagerStore.getState().currentPage);
-}
-
-export function setPageSize(pageSize: number): void {
-  if (pageSize <= 0) {
-    throw new Error('Page size must be a positive number');
+  const totalPages = Math.ceil(state.products.length / state.uiPageSize);
+  let newPage: number;
+  
+  if (state.currentPage <= 1) {
+    newPage = totalPages;
+  } else {
+    newPage = state.currentPage - 1;
   }
 
-  updateRecsManagerState((current) => {
-    // Phase 2: Enhanced page size change with position preservation
-    const currentProductIndex = (current.currentPage - 1) * current.uiPageSize;
-    const newPageForCurrentPosition = Math.floor(currentProductIndex / pageSize) + 1;
-
-    const paginationInfo = calculatePaginationInfo(
-      newPageForCurrentPosition,
-      pageSize,
-      current.totalProducts
-    );
-
-    debugLog('Recs Manager', 'setPageSize:', {
-      oldPageSize: current.uiPageSize,
-      newPageSize: pageSize,
-      oldPage: current.currentPage,
-      newPage: newPageForCurrentPosition,
-      currentProductIndex,
-      totalProducts: current.totalProducts
-    });
-
-    return {
-      ...current,
-      uiPageSize: pageSize,
-      currentPage: newPageForCurrentPosition,
-      ...paginationInfo,
-    };
+  log('Recs Manager', 'previousPage navigation:', {
+    currentPage: state.currentPage,
+    newPage,
+    totalPages,
+    totalProducts: state.products.length,
   });
 
-  debugLog('Recs Manager', 'Page size updated', recsManagerStore.getState().uiPageSize);
+  updateRecsManagerState((current) => ({
+    ...current,
+    currentPage: newPage,
+  }));
+
+  log('Recs Manager', 'Navigated to previous page', recsManagerStore.getState().currentPage);
 }
 
-export function goToPage(pageNumber: number): void {
-  if (pageNumber <= 0) {
-    throw new Error('Page number must be a positive number');
+/**
+ * Sets the page size for recommendations
+ * @param newPageSize The new page size
+ * @param instanceId The instance ID to use
+ */
+export function setPageSize(newPageSize: number, instanceId: string = 'default'): void {
+  const config = validateInstance(instanceId);
+  const log = logger(config.debug || false);
+  
+  if (newPageSize <= 0) {
+    throw new RecsConfigError('Page size must be a positive number');
   }
 
+  log('Recs Manager', 'setPageSize:', {
+    oldPageSize: recsManagerStore.getState().uiPageSize,
+    newPageSize,
+  });
+
+  updateRecsManagerState((current) => ({
+    ...current,
+    uiPageSize: newPageSize,
+    currentPage: 1,
+  }));
+
+  log('Recs Manager', 'Page size updated', recsManagerStore.getState().uiPageSize);
+}
+
+/**
+ * Navigates to a specific page of recommendations
+ * @param pageNumber The page number to navigate to
+ * @param instanceId The instance ID to use
+ */
+export function goToPage(pageNumber: number, instanceId: string = 'default'): void {
+  const config = validateInstance(instanceId);
+  const log = logger(config.debug || false);
   const state = recsManagerStore.getState();
-  if (state.totalProducts === 0) {
-    debugLog('Recs Manager', 'Cannot navigate: no products loaded');
+  
+  if (!state.products || state.products.length === 0) {
+    log('Recs Manager', 'Cannot navigate: no products loaded');
     return;
   }
 
-  updateRecsManagerState((current) => {
-    // Phase 2: Enhanced page validation and state calculation
-    const validPageNumber = Math.min(Math.max(1, pageNumber), current.totalPages || 1);
-    const paginationInfo = calculatePaginationInfo(
-      validPageNumber,
-      current.uiPageSize,
-      current.totalProducts
-    );
+  const totalPages = Math.ceil(state.products.length / state.uiPageSize);
+  
+  if (pageNumber < 1 || pageNumber > totalPages) {
+    return;
+  }
 
-    debugLog('Recs Manager', 'goToPage:', {
-      requestedPage: pageNumber,
-      validPage: validPageNumber,
-      totalPages: current.totalPages,
-      totalProducts: current.totalProducts
-    });
-
-    return {
-      ...current,
-      currentPage: validPageNumber,
-      ...paginationInfo,
-    };
+  log('Recs Manager', 'goToPage:', {
+    currentPage: state.currentPage,
+    targetPage: pageNumber,
+    totalPages,
   });
 
-  debugLog('Recs Manager', 'Navigated to page', recsManagerStore.getState().currentPage);
+  updateRecsManagerState((current) => ({
+    ...current,
+    currentPage: pageNumber,
+  }));
+
+  log('Recs Manager', 'Navigated to page', recsManagerStore.getState().currentPage);
 }
 
-// Cache management utilities
-export function clearRecsCache(): void {
+/**
+ * Clears the entire recommendations cache
+ * @param instanceId The instance ID to use for debug settings
+ */
+export function clearCache(instanceId: string = 'default'): void {
+  // Don't validate instance here, just get it if it exists
+  const instance = recsManagerInstances.get(instanceId);
+  const log = logger(instance?.config.debug || false);
+  
+  const cacheSize = recsCache.size;
   recsCache.clear();
-  debugLog('Recs Manager', 'Cache cleared');
+  
+  log('Recs Manager', `Cache cleared. Removed ${cacheSize} entries`);
 }
 
-export function refreshRecommendations(instanceId: string = 'default'): Promise<RecsProduct[]> {
-  const config = recsManagerInstances.get(instanceId);
-  if (!config) {
-    throw new Error(`RecsManager instance '${instanceId}' is not initialized.`);
-  }
+/**
+ * Removes expired entries from the cache
+ * @param instanceId The instance ID to use for debug settings
+ * @returns Number of expired entries removed
+ */
+export function cleanCache(instanceId: string = 'default'): number {
+  // Don't validate instance here, just get it if it exists
+  const instance = recsManagerInstances.get(instanceId);
+  const log = logger(instance?.config.debug || false);
+  
+  const now = Date.now();
+  let expiredCount = 0;
+  
+  recsCache.forEach((entry, key) => {
+    if (now >= entry.expiresAt) {
+      recsCache.delete(key);
+      expiredCount++;
+    }
+  });
+  
+  log('Recs Manager', `Cache cleanup: removed ${expiredCount} expired entries. Remaining: ${recsCache.size}`);
+  return expiredCount;
+}
 
-  // Clear cache for this instance
+/**
+ * Refreshes recommendations by clearing cache and fetching new data
+ * @param instanceId The instance ID to use
+ * @returns Promise resolving to an array of recommendation products
+ */
+export function refreshRecommendations(instanceId: string = 'default'): Promise<RecsProduct[]> {
+  const config = validateInstance(instanceId);
+
   const cacheKey = generateCacheKey(config);
   recsCache.delete(cacheKey);
 
-  // Fetch fresh data
   return fetchRecommendations(instanceId);
 }
 
-export function getInstanceConfig(instanceId: string = 'default'): RecsManagerConfig | undefined {
-  return recsManagerInstances.get(instanceId);
+/**
+ * Destroys a RecsManager instance and cleans up resources
+ * @param instanceId The instance ID to destroy
+ * @returns True if the instance was destroyed, false if it didn't exist
+ */
+export function destroyRecsManager(instanceId: string = 'default'): boolean {
+  if (!recsManagerInstances.has(instanceId)) {
+    return false;
+  }
+
+  const instance = recsManagerInstances.get(instanceId)!;
+  const log = logger(instance.config.debug || false);
+  
+  log('Recs Manager', `Destroying instance '${instanceId}'`);
+  recsManagerInstances.delete(instanceId);
+
+  // If this was the last instance, reset the store
+  if (recsManagerInstances.size === 0) {
+    updateRecsManagerState(() => initialState);
+    log('Recs Manager', 'Last instance destroyed, reset store to initial state');
+  }
+  
+  return true;
 }
 
+/**
+ * Gets the configuration for a RecsManager instance
+ * @param instanceId The instance ID to get the configuration for
+ * @returns The configuration for the instance, or undefined if it doesn't exist
+ */
+export function getInstanceConfig(instanceId: string = 'default'): RecsManagerConfig | undefined {
+  const instance = recsManagerInstances.get(instanceId);
+  return instance?.config;
+}
+
+/**
+ * Gets all instance IDs
+ * @returns An array of instance IDs
+ */
 export function getAllInstances(): string[] {
   return Array.from(recsManagerInstances.keys());
 }
 
-// Phase 2: Advanced pagination functions
+/**
+ * Sets up global watchers that are shared across all instances
+ */
+let globalWatchersInitialized = false;
+
+function setupGlobalWatchers(): void {
+  if (globalWatchersInitialized) return;
+  
+  // Watch for URL changes if in browser environment
+  if (typeof window !== 'undefined') {
+    window.addEventListener('popstate', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const page = parseInt(urlParams.get('page') || '1', 10);
+      
+      if (page !== recsManagerStore.getState().currentPage) {
+        updateRecsManagerState(state => ({ ...state, currentPage: page }));
+      }
+    });
+  }
+  
+  globalWatchersInitialized = true;
+}
+
+/**
+ * Sets up watchers for a RecsManager instance
+ * @param instanceId The instance ID to set up watchers for
+ */
+function setupWatchers(instanceId: string): void {
+  const instance = recsManagerInstances.get(instanceId);
+  if (!instance || instance.watchersInitialized) {
+    return;
+  }
+  
+  const log = logger(instance.config.debug || false);
+  log('Recs Manager', `Setting up watchers for instance '${instanceId}'`);
+  
+  // Set up watchers for pagination
+  recsManagerStore.watch(state => {
+    const { currentPage, uiPageSize } = state;
+    updateRecsManagerState(current => ({
+      ...current,
+      startIndex: (currentPage - 1) * uiPageSize,
+      endIndex: currentPage * uiPageSize - 1
+    }));
+  });
+  
+  // Mark watchers as initialized
+  instance.watchersInitialized = true;
+  log('Recs Manager', `Watchers initialized for instance '${instanceId}'`);
+}
+
+// Advanced pagination functions
 
 export function getPageInfo(): {
   currentPage: number;
@@ -568,22 +865,19 @@ export function getPageInfo(): {
   };
 }
 
-export function getPageProducts(pageNumber: number): RecsProduct[] {
-  const state = recsManagerStore.getState();
-
-  if (!state.products || state.products.length === 0) {
+export function getPageProducts(pageNumber: number, pageSize: number, products: RecsProduct[]): RecsProduct[] {
+  const hasDebugInstance = Array.from(recsManagerInstances.values()).some(instance => instance.config.debug);
+  
+  if (pageNumber < 1) {
+    if (hasDebugInstance) {
+      debugLog('Recs Manager', 'getPageProducts: Invalid page number', pageNumber);
+    }
     return [];
   }
 
-  if (pageNumber < 1 || pageNumber > state.totalPages) {
-    debugLog('Recs Manager', 'getPageProducts: Invalid page number', pageNumber);
-    return [];
-  }
-
-  const startIndex = (pageNumber - 1) * state.uiPageSize;
-  const endIndex = Math.min(startIndex + state.uiPageSize, state.totalProducts);
-
-  return state.products.slice(startIndex, endIndex);
+  const startIndex = (pageNumber - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  return products.slice(startIndex, endIndex);
 }
 
 export function getAllProducts(): RecsProduct[] {

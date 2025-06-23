@@ -26,12 +26,12 @@ import {
   setPageSize,
   goToPage,
   getRecsManagerState,
-  clearRecsCache,
+  clearCache,
   refreshRecommendations,
   getInstanceConfig,
   getAllInstances,
   recsManagerStore,
-  // Phase 2: Advanced pagination functions
+  // Advanced pagination functions
   getPageInfo,
   getPageProducts,
   getAllProducts,
@@ -72,12 +72,12 @@ export {
   setPageSize,
   goToPage,
   getRecsManagerState,
-  clearRecsCache,
+  clearCache,
   refreshRecommendations,
   getInstanceConfig,
   getAllInstances,
   recsManagerStore,
-  // Phase 2: Advanced pagination functions
+  // Advanced pagination functions
   getPageInfo,
   getPageProducts,
   getAllProducts,

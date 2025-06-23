@@ -18,25 +18,21 @@ interface InitUrlManagerParams {
    */
   collectionId?: string;
   /**
-   * The pagination type to use.
-   */
-  paginationType: PaginationType;
-  /**
    * Optional debug flag to enable or disable debug logging.
    */
   debug?: boolean;
 }
 
 /**
- * Parses the current URL parameters and returns a SearchParams object.
+ * Parses URL parameters and maps them to SearchParams structure.
  *
- * This function reads URL parameters such as 'gbi-query', 'pagesize', 'page', 'sort_by',
+ * This function extracts URL parameters such as 'gbi-query', 'pagesize', 'page',
  * 'refinement', and 'type', and maps them to the SearchParams structure.
  *
- * @param config - An object containing defaultPagesize, source, and paginationType.
+ * @param config - An object containing defaultPagesize and source.
  * @returns The parsed search parameters.
  */
-function parseUrlToSearchParams({ defaultPagesize, source, paginationType }: InitUrlManagerParams): SearchParams {
+function parseUrlToSearchParams({ defaultPagesize, source }: InitUrlManagerParams): SearchParams {
   const urlParams = new URLSearchParams(window.location.search);
 
   const gbi_query = urlParams.get('gbi-query') || '';
@@ -45,7 +41,7 @@ function parseUrlToSearchParams({ defaultPagesize, source, paginationType }: Ini
   const sort_by = urlParams.get('sort_by') || 'relevance';
   const type = urlParams.get('type') || 'product';
   const refinementParam = urlParams.get('refinement');
-  const refinements = refinementParam ? refinementParam.split(',') : [];
+  const refinements = refinementParam ? decodeRefinements(refinementParam) : [];
 
   return {
     gbi_query,
@@ -55,23 +51,16 @@ function parseUrlToSearchParams({ defaultPagesize, source, paginationType }: Ini
     sort_by,
     type,
     source, // Use the provided source.
-    paginationType, // Include the pagination type
+    paginationType: PaginationType.PAGINATE, // Default value, not parsed from URL
   };
 }
 
 /**
- * Initializes the URL Manager.
+ * Initializes the URL Manager and sets up URL parameter parsing.
  *
- * On initialization, this function:
- * - Parses the current URL parameters and updates the Input Store.
- * - Subscribes to changes in the Input Store and updates the browser URL accordingly,
- *   but only if an actual search is performed.
- *
- * This establishes a two-way binding: direct URL navigation updates the store, and
- * subsequent changes to the store update the URL. However, if no search action is taken
- * (i.e. all values remain at their defaults), the URL will not be updated.
- *
- * The `initialized` flag prevents duplicate initialization.
+ * This function initializes the URL Manager, parses URL parameters, and updates
+ * the Input Store with the parsed values. It also sets up a listener to update
+ * the URL when the Input Store changes.
  *
  * @param config - The initialization configuration including defaultPagesize and source.
  */
@@ -79,7 +68,6 @@ export function initUrlManager({
   defaultPagesize, 
   source,
   collectionId,
-  paginationType,
   debug = false,
 }: InitUrlManagerParams): void {
   // Prevent duplicate initialization.
@@ -89,7 +77,7 @@ export function initUrlManager({
   debugLog('URL Manager', 'Initializing URL Manager');
 
   // Parse URL parameters and update the Input Store.
-  const initialParams = parseUrlToSearchParams({ defaultPagesize, source, paginationType });
+  const initialParams = parseUrlToSearchParams({ defaultPagesize, source });
   if (collectionId) {
     initialParams.collectionId = collectionId;
   }
@@ -119,7 +107,7 @@ export function initUrlManager({
 
       // Map our search state to URL parameters.
       urlParams.set('type', params.type);
-      urlParams.set('refinement', params.refinements.join(','));
+      urlParams.set('refinement', encodeRefinements(params.refinements));
       urlParams.set('sort_by', params.sort_by);
       urlParams.set('page', params.page.toString());
       urlParams.set('gbi-query', params.gbi_query);
@@ -146,3 +134,41 @@ export function initUrlManager({
 
 // Initialize the flag.
 initUrlManager.initialized = false;
+
+/**
+ * Encodes an array of refinements into a URL-safe string
+ * Uses a custom separator and encoding to ensure special characters are handled properly
+ * 
+ * @param refinements - Array of refinement strings to encode
+ * @returns URL-safe string representation of refinements
+ */
+function encodeRefinements(refinements: ReadonlyArray<string>): string {
+  if (!refinements.length) return '';
+  
+  // Use base64 encoding to safely handle any special characters
+  return refinements.map(refinement => {
+    // First encode as URI component to handle special chars
+    const encoded = encodeURIComponent(refinement);
+    return encoded;
+  }).join('|'); // Use pipe as separator instead of comma
+}
+
+/**
+ * Decodes a URL-safe string into an array of refinements
+ * 
+ * @param encodedRefinements - URL-safe string representation of refinements
+ * @returns Array of decoded refinement strings
+ */
+function decodeRefinements(encodedRefinements: string): string[] {
+  if (!encodedRefinements) return [];
+  
+  // Split by pipe character and decode each refinement
+  return encodedRefinements.split('|').map(encoded => {
+    try {
+      return decodeURIComponent(encoded);
+    } catch (e) {
+      // Fallback if decoding fails
+      return encoded;
+    }
+  });
+}

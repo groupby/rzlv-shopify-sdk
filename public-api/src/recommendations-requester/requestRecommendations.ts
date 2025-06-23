@@ -20,6 +20,7 @@ export interface RequestRecsOptions {
   visitorId?: string;
   loginId?: string;
   filters?: RecsFilter[];
+  eventType?: string;
 }
 
 export interface RecsProduct {
@@ -88,11 +89,11 @@ async function fetchRecommendations(
   appEnv: AppEnv,
   recsOptions: RequestRecsOptions
 ): Promise<any> {
-  const endpoint = `https://${appEnv === AppEnv.Production ? AppEnv.ProxyProd : AppEnv.ProxyDev}.groupbycloud.com/${shopTenant}/api/recommendations`;
+  const endpoint = `https://${appEnv === AppEnv.Production ? AppEnv.ProxyProd : AppEnv.ProxyDev}.groupbycloud.com/${shopTenant}/api/recommendation`;
 
   const headers = {
     'Content-Type': 'application/json',
-    'X-Application-Type': 'recommendations',
+    'X-Application-Type': 'recsapi',
     'X-Groupby-Customer-Id': shopTenant,
     'Skip-Caching': 'true',
   };
@@ -106,6 +107,7 @@ async function fetchRecommendations(
     ...(recsOptions.visitorId && { visitorId: recsOptions.visitorId }),
     ...(recsOptions.loginId && { loginId: recsOptions.loginId }),
     ...(recsOptions.filters && { filters: recsOptions.filters }),
+    ...(recsOptions.eventType && { eventType: recsOptions.eventType }),
   };
 
   try {
