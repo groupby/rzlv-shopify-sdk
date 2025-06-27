@@ -1,7 +1,8 @@
-import { createStore, createEvent, createEffect } from 'effector';
-import { requestRecommendations, RequestRecsResponse, RecsProduct } from '@rzlv/public-api-sdk';
-import { RecsManagerConfig } from '@rzlv/public-api-sdk';
+import { createStore, createEvent, createEffect, sample } from 'effector';
+import { requestRecommendations, RequestRecsResponse, RecsProduct, RecsManagerConfig } from '@rzlv/public-api-sdk';
 import { debugLog } from './debugLogger';
+
+const MAX_API_RESULTS = 30;
 
 let recsManagerConfig: RecsManagerConfig;
 
@@ -40,7 +41,7 @@ export const fetchRecsFx = createEffect(
         name: config.name,
         fields: config.fields || ['*'],
         collection: config.collection,
-        pageSize: 100,
+        pageSize: MAX_API_RESULTS,
         productID: config.productID,
         visitorId: config.visitorId,
         loginId: config.loginId,
@@ -51,26 +52,33 @@ export const fetchRecsFx = createEffect(
   }
 );
 
-function updateCurrentPageProducts() {
-  const records = recordsStore.getState();
-  const pageIndex = pageIndexStore.getState();
-  const pageSize = pageSizeStore.getState();
-  
-  const startIndex = pageIndex * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentProducts = records.slice(startIndex, endIndex);
-  
-  updateCurrentPage(currentProducts);
-  
-  const totalPages = Math.ceil(records.length / pageSize);
-  updateTotalPages(totalPages);
-}
+const updatePagination = createEvent<{ currentProducts: RecsProduct[]; totalPages: number }>();
 
-recordsStore.watch(updateCurrentPageProducts);
-pageIndexStore.watch(updateCurrentPageProducts);
+updatePagination.watch(({ currentProducts, totalPages }) => {
+  updateCurrentPage(currentProducts);
+  updateTotalPages(totalPages);
+});
+
+sample({
+  source: {
+    records: recordsStore,
+    pageIndex: pageIndexStore,
+    pageSize: pageSizeStore,
+  },
+  clock: [recordsStore, pageIndexStore, pageSizeStore],
+  fn: ({ records, pageIndex, pageSize }) => {
+    const startIndex = pageIndex * pageSize;
+    const endIndex = startIndex + pageSize;
+    const currentProducts = records.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(records.length / pageSize);
+    
+    return { currentProducts, totalPages };
+  },
+  target: updatePagination,
+});
+
 pageSizeStore.watch(() => {
   updatePageIndex(0);
-  updateCurrentPageProducts();
 });
 
 export function initRecsManager(config: RecsManagerConfig): void {
