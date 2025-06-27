@@ -5,6 +5,7 @@ import { requestAutocomplete } from './autocomplete-requester/requestAutocomplet
 import { requestAutocompleteWithSearch } from './autocomplete-requester/requestAutocompleteWithSearch';
 import { AUTOCOMPLETE_PREFIX } from './utils/searchUtils.types';
 import { fetchStorefrontProducts } from './search-requester/fetchStorefrontProducts';
+import { requestRecommendations } from './recommendations-requester/requestRecommendations';
 
 export {
   requestSearch,
@@ -12,5 +13,8 @@ export {
   requestAutocomplete,
   requestAutocompleteWithSearch,
   AUTOCOMPLETE_PREFIX,
-  fetchStorefrontProducts
+  fetchStorefrontProducts,
+  requestRecommendations
 }
+
+export type { RecsProduct, RequestRecsResponse, RecsManagerConfig } from './recommendations-requester/requestRecommendations';
