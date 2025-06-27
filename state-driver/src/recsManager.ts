@@ -81,8 +81,9 @@ pageSizeStore.watch(() => {
   updatePageIndex(0);
 });
 
+
 export function initRecsManager(config: RecsManagerConfig): void {
-  if ((initRecsManager as any).initialized) {
+  if ((initRecsManager as unknown as { initialized: boolean }).initialized) {
     debugLog('Recs Manager', 'Already initialized, skipping');
     return;
   }
@@ -113,7 +114,7 @@ export function initRecsManager(config: RecsManagerConfig): void {
   
   fetchRecommendations();
   
-  (initRecsManager as any).initialized = true;
+  (initRecsManager as unknown as { initialized: boolean }).initialized = true;
 }
 
 export function fetchRecommendations(): void {

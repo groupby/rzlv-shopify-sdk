@@ -39,7 +39,7 @@ export interface RecsProduct {
   id: string;
   title?: string;
   handle?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface RequestRecsResponse {
@@ -48,7 +48,7 @@ export interface RequestRecsResponse {
     modelName: string;
     totalCount: number;
   };
-  rawResponse: any;
+  rawResponse: unknown;
 }
 
 export async function requestRecommendations(
@@ -64,9 +64,9 @@ export async function requestRecommendations(
     'X-Groupby-Customer-Id': shopTenant,
   };
 
-  const requestBody: any = {
+  const requestBody: Record<string, unknown> = {
     name: recsOptions.name,
-    fields: recsOptions.fields || ['*'],
+    fields: recsOptions.fields ?? ['*'],
     collection: recsOptions.collection,
     pageSize: String(recsOptions.pageSize),
   };
