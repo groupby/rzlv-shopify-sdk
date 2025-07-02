@@ -11,9 +11,10 @@ export interface RecsFilter {
 
 export interface RecsManagerConfig {
   shopTenant: string;
-  appEnv: AppEnv;
+  appEnv: string; // Changed to string to match searchManager pattern
   name: string;
   collection: string;
+  area?: string; // Added area parameter as requested
   fields?: string[];
   pageSize: number;
   productID?: string | string[];
@@ -53,10 +54,10 @@ export interface RequestRecsResponse {
 
 export async function requestRecommendations(
   shopTenant: string,
-  appEnv: AppEnv,
+  appEnv: string,
   recsOptions: RequestRecsOptions
 ): Promise<RequestRecsResponse> {
-  const endpoint = `https://${appEnv === AppEnv.Production ? AppEnv.ProxyProd : AppEnv.ProxyDev}.groupbycloud.com/${shopTenant}/api/recommendation`;
+  const endpoint = `https://${appEnv === 'Production' ? 'proxy.shp-lo' : 'proxy-dev.shp-lo'}.groupbycloud.com/${shopTenant}/api/recommendation`;
 
   const headers = {
     'Content-Type': 'application/json',
