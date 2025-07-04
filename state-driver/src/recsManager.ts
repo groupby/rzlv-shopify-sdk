@@ -19,12 +19,12 @@ interface RecsManagerParams {
     productID?: string | string[];
     visitorId?: string;
     loginId?: string;
-    filters?: Array<{
+    filters?: {
       field: string;
       value: string;
       exclude?: string;
       required?: string;
-    }>;
+    }[];
     eventType?: string;
     area?: string;
   };
@@ -64,7 +64,7 @@ let recsManagerConfig: RecsManagerConfig;
  */
 export function initRecsManager(config: RecsManagerConfig): void {
   // Add a guard so this is only initialized once.
-  if ((initRecsManager as any).initialized) {
+  if ((initRecsManager as { initialized?: boolean }).initialized) {
     debugLog('Recs Manager', 'Already initialized, skipping');
     return;
   }
@@ -79,7 +79,7 @@ export function initRecsManager(config: RecsManagerConfig): void {
     clock: recsInputStore,
     // Only trigger the recommendations effect when the user has explicitly requested it
     filter: (inputState: RecsParams) => 
-      inputState.hasRequested === true && inputState.name !== '',
+      inputState.hasRequested && inputState.name !== '',
     fn: (inputState: RecsParams): RecsManagerParams => ({
       shopTenant: recsManagerConfig.shopTenant,
       appEnv: recsManagerConfig.appEnv,
@@ -161,7 +161,7 @@ export function initRecsManager(config: RecsManagerConfig): void {
     }));
   });
 
-  (initRecsManager as any).initialized = true;
+  (initRecsManager as { initialized?: boolean }).initialized = true;
   debugLog('Recs Manager', 'Initialization complete - ready for explicit requests');
 }
 

@@ -13,12 +13,12 @@ export interface RecsParams {
   productID?: string | string[];
   visitorId?: string;
   loginId?: string;
-  filters?: Array<{
+  filters?: {
     field: string;
     value: string;
     exclude?: string;
     required?: string;
-  }>;
+  }[];
   eventType?: string;
   area?: string;
   hasRequested: boolean; // Flag to control when to actually fetch
