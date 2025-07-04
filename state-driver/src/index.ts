@@ -19,15 +19,18 @@ import { requestAutocomplete, requestAutocompleteWithSearch, requestRecommendati
 // recommendations manager
 import {
   initRecsManager,
+  setupRecommendations,
   fetchRecommendations,
   nextPage,
   previousPage,
-  reset as resetRecs,
-  setPageSize as setRecsPageSize,
-  recordsStore as recsRecordsStore,
-  currentPageStore as recsCurrentPageStore,
-  loadingStore as recsLoadingStore,
-  errorStore as recsErrorStore,
+  resetRecs,
+  setRecsPageSize,
+  recsRecordsStore,
+  recsCurrentPageStore,
+  recsLoadingStore,
+  recsErrorStore,
+  recsInputStore,
+  recsOutputStore,
 } from './recsManager';
 
 export {
@@ -51,6 +54,7 @@ export {
   requestRecommendations,
   // Recommendations Manager
   initRecsManager,
+  setupRecommendations,
   fetchRecommendations,
   nextPage,
   previousPage,
@@ -60,4 +64,6 @@ export {
   recsCurrentPageStore,
   recsLoadingStore,
   recsErrorStore,
+  recsInputStore,
+  recsOutputStore,
 }
