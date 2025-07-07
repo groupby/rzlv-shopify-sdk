@@ -82,13 +82,13 @@ export function initSearchManager(config: SearchManagerConfig): void {
     source: searchInputStore,
     clock: searchInputStore,
     // Only trigger the search effect when one of the following is true:
-    // - The user has explicitly submitted a search (hasSubmitted flag), OR  
-    // - Refinements have been changed (hasRefinementChanged flag), OR
+    // - The user has explicitly submitted a search (hasSubmitted flag), OR
+    // - There are any refinements, OR
     // - The page number is greater than 1.
-    // This prevents infinite loops from just having refinements present.
+    // This allows an empty search to be triggered if the user has submitted it.
     filter: (inputState: SearchParams) =>
       inputState.hasSubmitted === true ||
-      inputState.hasRefinementChanged === true ||
+      inputState.refinements.length > 0 ||
       inputState.page > 1,
     fn: (inputState: SearchParams): SearchManagerParams => {
       return {
@@ -149,11 +149,10 @@ export function initSearchManager(config: SearchManagerConfig): void {
       };
     });
 
-    // **Immediately clear the flags so we don't re-fire**
+    // **Immediately clear the "I just submitted" flag so we don’t re-fire**
     updateInputStore((current) => ({
       ...current,
-      hasSubmitted: false,
-      hasRefinementChanged: false
+      hasSubmitted: false
     }));
   });
 

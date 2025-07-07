@@ -27,12 +27,11 @@ export function handleRefinementChange(
       existingRefinements.delete(formattedRefinement);
     }
 
-    // Reset page to 1 and set flag whenever refinements change.
+    // Reset page to 1 whenever refinements change.
     return {
       ...currentParams,
       refinements: Array.from(existingRefinements),
       page: 1,
-      hasRefinementChanged: true,
     };
   });
 }
