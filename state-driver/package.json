@@ -1,7 +1,7 @@
 {
   "name": "gbi-search-state-driver",
   "private": false,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A public stateful SDK for GBI Search exposing selected functionality.",
   "main": "./dist-state-driver/gbi-search-state-driver.umd.js",
   "module": "./dist-state-driver/gbi-search-state-driver.es.js",

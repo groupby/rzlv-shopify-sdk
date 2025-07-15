@@ -33,6 +33,29 @@ import {
   recsOutputStore,
 } from './recsManager';
 
+// Create recommendations namespace
+// access under sub level namespace ex:
+// GBISearchStateDriver.recommendations.initRecsManager(config);
+export const recommendations = {
+  // Recommendations API
+  requestRecommendations,
+  // Recommendations Manager
+  initRecsManager,
+  setupRecommendations,
+  fetchRecommendations,
+  nextPage,
+  previousPage,
+  resetRecs,
+  setRecsPageSize,
+  recsRecordsStore,
+  recsCurrentPageStore,
+  recsLoadingStore,
+  recsErrorStore,
+  recsInputStore,
+  recsOutputStore,
+};
+
+// Export all search-related functionality at the top level for backward compatibility
 export {
   handleRefinementChange,
   handlePageSizeChange,
@@ -50,20 +73,4 @@ export {
   applyRange,
   requestAutocomplete,
   requestAutocompleteWithSearch,
-  // Recommendations API
-  requestRecommendations,
-  // Recommendations Manager
-  initRecsManager,
-  setupRecommendations,
-  fetchRecommendations,
-  nextPage,
-  previousPage,
-  resetRecs,
-  setRecsPageSize,
-  recsRecordsStore,
-  recsCurrentPageStore,
-  recsLoadingStore,
-  recsErrorStore,
-  recsInputStore,
-  recsOutputStore,
-}
+};

@@ -87,6 +87,8 @@ export function initUrlManager({
   sdkConfig.debug = debug;
   debugLog('URL Manager', 'Initializing URL Manager');
 
+  console.log('DRD test SDK URL MANAGER 1');
+
   // Parse URL parameters and update the Input Store.
   const initialParams = parseUrlToSearchParams({ defaultPagesize, source });
   if (collectionId) {
