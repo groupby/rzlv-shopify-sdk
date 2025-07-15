@@ -7,13 +7,15 @@ import type { RecsProduct } from '@rzlv/public-api-sdk';
  */
 export interface RecsResultsOutput {
   /**
-   * Array of recommendation product records.
+   * Array of current page products (what UI displays).
+   * This is the main field that UI components should consume.
    */
   products: RecsProduct[];
   /**
-   * Array of current page products (for pagination).
+   * Array of all recommendation product records (for internal pagination).
+   * UI components typically don't need this - use `products` instead.
    */
-  currentPageProducts: RecsProduct[];
+  allProducts: RecsProduct[];
   /**
    * Pagination state.
    */
@@ -47,7 +49,7 @@ export interface RecsResultsOutput {
 // Define the initial state for the Output Store.
 const initialRecsResults: RecsResultsOutput = {
   products: [],
-  currentPageProducts: [],
+  allProducts: [],
   pagination: {
     currentPage: 0,
     pageSize: 10,

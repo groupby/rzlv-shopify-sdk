@@ -123,8 +123,8 @@ export function initRecsManager(config: RecsManagerConfig): void {
 
       return {
         ...current,
-        products: result.products,
-        currentPageProducts,
+        products: currentPageProducts,  // UI consumes this (current page)
+        allProducts: result.products,   // Internal use (all products)
         pagination: {
           currentPage: 0,
           pageSize,
@@ -197,12 +197,12 @@ export function nextPage(): void {
     if (nextPageIndex < current.pagination.totalPages) {
       const startIndex = nextPageIndex * current.pagination.pageSize;
       const endIndex = startIndex + current.pagination.pageSize;
-      const newCurrentPageProducts = current.products.slice(startIndex, endIndex);
+      const newCurrentPageProducts = current.allProducts.slice(startIndex, endIndex);
       
       debugLog('Recs Manager', 'Moving to next page:', nextPageIndex);
       return {
         ...current,
-        currentPageProducts: newCurrentPageProducts,
+        products: newCurrentPageProducts,  // UI consumes this
         pagination: {
           ...current.pagination,
           currentPage: nextPageIndex,
@@ -219,12 +219,12 @@ export function previousPage(): void {
     if (prevPageIndex >= 0) {
       const startIndex = prevPageIndex * current.pagination.pageSize;
       const endIndex = startIndex + current.pagination.pageSize;
-      const newCurrentPageProducts = current.products.slice(startIndex, endIndex);
+      const newCurrentPageProducts = current.allProducts.slice(startIndex, endIndex);
       
       debugLog('Recs Manager', 'Moving to previous page:', prevPageIndex);
       return {
         ...current,
-        currentPageProducts: newCurrentPageProducts,
+        products: newCurrentPageProducts,  // UI consumes this
         pagination: {
           ...current.pagination,
           currentPage: prevPageIndex,
@@ -238,10 +238,10 @@ export function previousPage(): void {
 export function resetRecs(): void {
   debugLog('Recs Manager', 'Resetting to first page');
   updateRecsOutputStore((current) => {
-    const newCurrentPageProducts = current.products.slice(0, current.pagination.pageSize);
+    const newCurrentPageProducts = current.allProducts.slice(0, current.pagination.pageSize);
     return {
       ...current,
-      currentPageProducts: newCurrentPageProducts,
+      products: newCurrentPageProducts,  // UI consumes this
       pagination: {
         ...current.pagination,
         currentPage: 0,
@@ -263,11 +263,11 @@ export function setRecsPageSize(size: number): void {
   
   updateRecsOutputStore((current) => {
     const totalPages = Math.ceil(current.pagination.totalRecords / size);
-    const newCurrentPageProducts = current.products.slice(0, size);
+    const newCurrentPageProducts = current.allProducts.slice(0, size);
     
     return {
       ...current,
-      currentPageProducts: newCurrentPageProducts,
+      products: newCurrentPageProducts,  // UI consumes this
       pagination: {
         ...current.pagination,
         currentPage: 0,
@@ -280,10 +280,4 @@ export function setRecsPageSize(size: number): void {
 
 // Export stores for external access
 export { recsInputStore };
-export { recsOutputStore };
-
-// Create derived stores for backward compatibility  
-export const recsCurrentPageStore = recsOutputStore.map(state => state.currentPageProducts);
-export const recsLoadingStore = recsOutputStore.map(state => state.loading);
-export const recsErrorStore = recsOutputStore.map(state => state.error);
-export const recsRecordsStore = recsOutputStore.map(state => state.products); 
+export { recsOutputStore }; 

@@ -25,10 +25,6 @@ import {
   previousPage,
   resetRecs,
   setRecsPageSize,
-  recsRecordsStore,
-  recsCurrentPageStore,
-  recsLoadingStore,
-  recsErrorStore,
   recsInputStore,
   recsOutputStore,
 } from './recsManager';
@@ -47,10 +43,6 @@ export const recommendations = {
   previousPage,
   resetRecs,
   setRecsPageSize,
-  recsRecordsStore,
-  recsCurrentPageStore,
-  recsLoadingStore,
-  recsErrorStore,
   recsInputStore,
   recsOutputStore,
 };
