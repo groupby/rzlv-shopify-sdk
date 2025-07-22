@@ -1,7 +1,7 @@
 import { createEffect, sample } from 'effector';
 import { recsInputStore, updateRecsInputStore, type RecsParams } from './recsInputStore';
 import { recsOutputStore, updateRecsOutputStore } from './recsOutputStore';
-import { requestRecommendations, type RequestRecsResponse, type RecsManagerConfig } from '@rzlv/public-api-sdk';
+import { requestRecommendations, type RequestRecsResponse, type RecsManagerConfig, type RecsFilter, type RecsRequestProduct } from '@rzlv/public-api-sdk';
 import { debugLog } from './debugLogger';
 
 /**
@@ -16,17 +16,18 @@ interface RecsManagerParams {
     fields: string[];
     collection: string;
     pageSize: number;
+    limit?: string;
     productID?: string | string[];
+    products?: RecsRequestProduct[];
     visitorId?: string;
     loginId?: string;
-    filters?: {
-      field: string;
-      value: string;
-      exclude?: string;
-      required?: string;
-    }[];
+    filters?: RecsFilter[];
+    rawFilter?: string;
+    placement?: string;
     eventType?: string;
     area?: string;
+    debug?: boolean;
+    strictFiltering?: boolean;
   };
 }
 
@@ -88,12 +89,18 @@ export function initRecsManager(config: RecsManagerConfig): void {
         fields: inputState.fields,
         collection: inputState.collection,
         pageSize: inputState.pageSize,
+        limit: inputState.limit,
         productID: inputState.productID,
+        products: inputState.products,
         visitorId: inputState.visitorId,
         loginId: inputState.loginId,
         filters: inputState.filters,
+        rawFilter: inputState.rawFilter,
+        placement: inputState.placement,
         eventType: inputState.eventType,
         area: inputState.area,
+        debug: inputState.debug,
+        strictFiltering: inputState.strictFiltering,
       },
     }),
     target: recsFx,

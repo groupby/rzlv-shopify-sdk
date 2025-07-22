@@ -17,4 +17,10 @@ export {
   requestRecommendations
 }
 
-export type { RecsProduct, RequestRecsResponse, RecsManagerConfig } from './recommendations-requester/requestRecommendations';
+export type { 
+  RecsProduct, 
+  RecsRequestProduct, 
+  RecsFilter, 
+  RequestRecsResponse, 
+  RecsManagerConfig 
+} from './recommendations-requester/requestRecommendations';

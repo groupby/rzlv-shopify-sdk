@@ -5,8 +5,8 @@ export { AppEnv };
 export interface RecsFilter {
   field: string;
   value: string;
-  exclude?: string;
-  required?: string;
+  exclude?: boolean;
+  derivedFromProduct?: boolean;
 }
 
 export interface RecsManagerConfig {
@@ -17,11 +17,17 @@ export interface RecsManagerConfig {
   area?: string; // Added area parameter as requested
   fields?: string[];
   pageSize: number;
+  limit?: string;
   productID?: string | string[];
+  products?: RecsRequestProduct[];
   visitorId?: string;
   loginId?: string;
   filters?: RecsFilter[];
+  rawFilter?: string;
+  placement?: string;
   eventType?: string;
+  debug?: boolean;
+  strictFiltering?: boolean;
 }
 
 export interface RequestRecsOptions {
@@ -29,11 +35,22 @@ export interface RequestRecsOptions {
   fields?: string[];
   collection: string;
   pageSize: number;
+  limit?: string;
   productID?: string | string[];
+  products?: RecsRequestProduct[];
   visitorId?: string;
   loginId?: string;
   filters?: RecsFilter[];
+  rawFilter?: string;
+  placement?: string;
   eventType?: string;
+  debug?: boolean;
+  strictFiltering?: boolean;
+}
+
+export interface RecsRequestProduct {
+  id: string;
+  quantity?: number;
 }
 
 export interface RecsProduct {
@@ -72,10 +89,18 @@ export async function requestRecommendations(
     pageSize: String(recsOptions.pageSize),
   };
 
+  if (recsOptions.limit) {
+    requestBody.limit = recsOptions.limit;
+  }
+
   if (recsOptions.productID) {
     requestBody.productID = Array.isArray(recsOptions.productID) 
       ? recsOptions.productID 
       : [recsOptions.productID];
+  }
+
+  if (recsOptions.products) {
+    requestBody.products = recsOptions.products;
   }
 
   if (recsOptions.visitorId) {
@@ -90,8 +115,24 @@ export async function requestRecommendations(
     requestBody.filters = recsOptions.filters;
   }
 
+  if (recsOptions.rawFilter) {
+    requestBody.rawFilter = recsOptions.rawFilter;
+  }
+
+  if (recsOptions.placement) {
+    requestBody.placement = recsOptions.placement;
+  }
+
   if (recsOptions.eventType) {
     requestBody.eventType = recsOptions.eventType;
+  }
+
+  if (recsOptions.debug !== undefined) {
+    requestBody.debug = recsOptions.debug;
+  }
+
+  if (recsOptions.strictFiltering !== undefined) {
+    requestBody.strictFiltering = recsOptions.strictFiltering;
   }
 
   const response = await fetch(endpoint, {

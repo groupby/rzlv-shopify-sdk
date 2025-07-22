@@ -1,5 +1,6 @@
 import { createStore, createEvent } from 'effector';
 import type { UpdateStateFn } from './types';
+import type { RecsFilter, RecsRequestProduct } from '@rzlv/public-api-sdk';
 import { debugLog } from './debugLogger';
 
 /**
@@ -10,17 +11,18 @@ export interface RecsParams {
   fields: string[];
   collection: string;
   pageSize: number;
+  limit?: string;
   productID?: string | string[];
+  products?: RecsRequestProduct[];
   visitorId?: string;
   loginId?: string;
-  filters?: {
-    field: string;
-    value: string;
-    exclude?: string;
-    required?: string;
-  }[];
+  filters?: RecsFilter[];
+  rawFilter?: string;
+  placement?: string;
   eventType?: string;
   area?: string;
+  debug?: boolean;
+  strictFiltering?: boolean;
   hasRequested: boolean; // Flag to control when to actually fetch
 }
 
@@ -29,12 +31,18 @@ const initialRecsParams: RecsParams = {
   fields: ['*'],
   collection: '',
   pageSize: 10,
+  limit: undefined,
   productID: undefined,
+  products: undefined,
   visitorId: undefined,
   loginId: undefined,
   filters: undefined,
+  rawFilter: undefined,
+  placement: undefined,
   eventType: undefined,
   area: undefined,
+  debug: undefined,
+  strictFiltering: undefined,
   hasRequested: false, // Initially false - no automatic fetching
 };
 

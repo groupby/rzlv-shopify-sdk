@@ -73,6 +73,7 @@ export function initSearchManager(config: SearchManagerConfig): void {
   if ((initSearchManager as any).initialized) {
     return;
   }
+  console.log('DRD testing SDK change 1');
   debugLog('Search Manager', 'Initializing with config', config);
   // Store the configuration for use in every search request.
   searchManagerConfig = config;
