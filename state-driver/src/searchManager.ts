@@ -151,10 +151,11 @@ export function initSearchManager(config: SearchManagerConfig): void {
     });
 
     // **Immediately clear the "I just submitted" flag so we don’t re-fire**
-    updateInputStore((current) => ({
+    // this causes infinite loop
+/*    updateInputStore((current) => ({
       ...current,
       hasSubmitted: false
-    }));
+    }));*/
   });
 
   // When the search effect fails, update the Output Store with an error state.
