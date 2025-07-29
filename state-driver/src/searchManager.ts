@@ -73,7 +73,6 @@ export function initSearchManager(config: SearchManagerConfig): void {
   if ((initSearchManager as any).initialized) {
     return;
   }
-  console.log('DRD testing SDK change 1');
   debugLog('Search Manager', 'Initializing with config', config);
   // Store the configuration for use in every search request.
   searchManagerConfig = config;
@@ -88,6 +87,7 @@ export function initSearchManager(config: SearchManagerConfig): void {
     // - The page number is greater than 1.
     // This allows an empty search to be triggered if the user has submitted it.
     filter: (inputState: SearchParams) =>
+      inputState.gbi_query.trim() !== "" ||
       inputState.hasSubmitted === true ||
       inputState.refinements.length > 0 ||
       inputState.page > 1,
@@ -151,11 +151,10 @@ export function initSearchManager(config: SearchManagerConfig): void {
     });
 
     // **Immediately clear the "I just submitted" flag so we don’t re-fire**
-    // this causes infinite loop
-/*    updateInputStore((current) => ({
+    updateInputStore((current) => ({
       ...current,
       hasSubmitted: false
-    }));*/
+    }));
   });
 
   // When the search effect fails, update the Output Store with an error state.
