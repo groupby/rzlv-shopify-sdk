@@ -149,12 +149,6 @@ export function initSearchManager(config: SearchManagerConfig): void {
         rawResponse: result.rawResponse,
       };
     });
-
-    // **Immediately clear the "I just submitted" flag so we don’t re-fire**
-    updateInputStore((current) => ({
-      ...current,
-      hasSubmitted: false
-    }));
   });
 
   // When the search effect fails, update the Output Store with an error state.
