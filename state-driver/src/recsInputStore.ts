@@ -11,6 +11,7 @@ export interface RecsParams {
   fields: string[];
   collection: string;
   pageSize: number;
+  currentPage: number;
   limit?: string;
   productID?: string | string[];
   products?: RecsRequestProduct[];
@@ -31,6 +32,7 @@ const initialRecsParams: RecsParams = {
   fields: ['*'],
   collection: '',
   pageSize: 10,
+  currentPage: 0,
   limit: undefined,
   productID: undefined,
   products: undefined,

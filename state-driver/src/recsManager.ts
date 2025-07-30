@@ -16,6 +16,7 @@ interface RecsManagerParams {
     fields: string[];
     collection: string;
     pageSize: number;
+    currentPage: number;
     limit?: string;
     productID?: string | string[];
     products?: RecsRequestProduct[];
@@ -42,7 +43,7 @@ export const recsFx = createEffect(
       appEnv: params.appEnv,
       recsOptions: params.recsOptions
     });
-    
+
     return await requestRecommendations(
       params.shopTenant,
       params.appEnv,
@@ -69,7 +70,7 @@ export function initRecsManager(config: RecsManagerConfig): void {
     debugLog('Recs Manager', 'Already initialized, skipping');
     return;
   }
-  
+
   debugLog('Recs Manager', 'Initializing with config', config);
   // Store the configuration for use in every recommendations request.
   recsManagerConfig = config;
@@ -79,7 +80,7 @@ export function initRecsManager(config: RecsManagerConfig): void {
     source: recsInputStore,
     clock: recsInputStore,
     // Only trigger the recommendations effect when the user has explicitly requested it
-    filter: (inputState: RecsParams) => 
+    filter: (inputState: RecsParams) =>
       inputState.hasRequested && inputState.name !== '',
     fn: (inputState: RecsParams): RecsManagerParams => ({
       shopTenant: recsManagerConfig.shopTenant,
@@ -89,6 +90,7 @@ export function initRecsManager(config: RecsManagerConfig): void {
         fields: inputState.fields,
         collection: inputState.collection,
         pageSize: inputState.pageSize,
+        currentPage: inputState.currentPage,
         limit: inputState.limit,
         productID: inputState.productID,
         products: inputState.products,
@@ -119,21 +121,26 @@ export function initRecsManager(config: RecsManagerConfig): void {
   });
 
   // When the recommendations effect is done, update the Output Store with the returned data.
-  recsFx.done.watch(({ result }) => {
+  recsFx.done.watch(({ result, params }) => {
     debugLog('Recs Manager', 'recsFx done, received products:', result.products.length);
-    
+
     updateRecsOutputStore((current) => {
       const totalRecords = result.products.length;
-      const pageSize = current.pagination.pageSize;
+      const pageSize = params.recsOptions.pageSize;
       const totalPages = Math.ceil(totalRecords / pageSize);
-      const currentPageProducts = result.products.slice(0, pageSize);
+      const currentPage = params.recsOptions.currentPage || 0;
+
+      // Calculate slice based on actual currentPage
+      const startIndex = currentPage * pageSize;
+      const endIndex = startIndex + pageSize;
+      const currentPageProducts = result.products.slice(startIndex, endIndex);
 
       return {
         ...current,
         products: currentPageProducts,  // UI consumes this (current page)
         allProducts: result.products,   // Internal use (all products)
         pagination: {
-          currentPage: 0,
+          currentPage,
           pageSize,
           totalPages,
           totalRecords,
@@ -145,7 +152,7 @@ export function initRecsManager(config: RecsManagerConfig): void {
       };
     });
 
-    // **Clear the "I just requested" flag so we don't re-fire**
+    // Reset hasRequested flag
     updateRecsInputStore((current) => ({
       ...current,
       hasRequested: false
@@ -198,92 +205,58 @@ export function fetchRecommendations(): void {
 /**
  * Navigation functions for pagination
  */
+// TODO: move funcs to own files for exporting!!
 export function nextPage(): void {
-  updateRecsOutputStore((current) => {
-    const nextPageIndex = current.pagination.currentPage + 1;
-    if (nextPageIndex < current.pagination.totalPages) {
-      const startIndex = nextPageIndex * current.pagination.pageSize;
-      const endIndex = startIndex + current.pagination.pageSize;
-      const newCurrentPageProducts = current.allProducts.slice(startIndex, endIndex);
-      
-      debugLog('Recs Manager', 'Moving to next page:', nextPageIndex);
-      return {
-        ...current,
-        products: newCurrentPageProducts,  // UI consumes this
-        pagination: {
-          ...current.pagination,
-          currentPage: nextPageIndex,
-        },
-      };
+  // Get current output store state for bounds checking
+  const outputState = recsOutputStore.getState();
+  
+  updateRecsInputStore((current) => {
+    const nextPageIndex = current.currentPage + 1;
+    // Add bounds checking
+    if (nextPageIndex >= outputState.pagination.totalPages) {
+      return current; // Don't change if would exceed bounds
     }
-    return current;
+    
+    return {
+      ...current,
+      currentPage: nextPageIndex,
+      hasRequested: true
+    };
   });
 }
 
 export function previousPage(): void {
-  updateRecsOutputStore((current) => {
-    const prevPageIndex = current.pagination.currentPage - 1;
-    if (prevPageIndex >= 0) {
-      const startIndex = prevPageIndex * current.pagination.pageSize;
-      const endIndex = startIndex + current.pagination.pageSize;
-      const newCurrentPageProducts = current.allProducts.slice(startIndex, endIndex);
-      
-      debugLog('Recs Manager', 'Moving to previous page:', prevPageIndex);
-      return {
-        ...current,
-        products: newCurrentPageProducts,  // UI consumes this
-        pagination: {
-          ...current.pagination,
-          currentPage: prevPageIndex,
-        },
-      };
+  updateRecsInputStore((current) => {
+    if (current.currentPage <= 0) {
+      return current; // Don't trigger API call if already on first page
     }
-    return current;
-  });
-}
-
-export function resetRecs(): void {
-  debugLog('Recs Manager', 'Resetting to first page');
-  updateRecsOutputStore((current) => {
-    const newCurrentPageProducts = current.allProducts.slice(0, current.pagination.pageSize);
+    
+    const prevPageIndex = current.currentPage - 1;
     return {
       ...current,
-      products: newCurrentPageProducts,  // UI consumes this
-      pagination: {
-        ...current.pagination,
-        currentPage: 0,
-      },
+      currentPage: prevPageIndex,
+      hasRequested: true
     };
   });
 }
 
 export function setRecsPageSize(size: number): void {
-  if (size <= 0) {
-    throw new Error('Page size must be positive');
-  }
-  debugLog('Recs Manager', 'Setting page size:', size);
-  
   updateRecsInputStore((current) => ({
     ...current,
-    pageSize: size
+    pageSize: size,
+    currentPage: 0,  // Reset to first page when changing page size
+    hasRequested: true
   }));
-  
-  updateRecsOutputStore((current) => {
-    const totalPages = Math.ceil(current.pagination.totalRecords / size);
-    const newCurrentPageProducts = current.allProducts.slice(0, size);
-    
-    return {
-      ...current,
-      products: newCurrentPageProducts,  // UI consumes this
-      pagination: {
-        ...current.pagination,
-        currentPage: 0,
-        pageSize: size,
-        totalPages,
-      },
-    };
-  });
 }
+
+export function resetRecs(): void {
+  updateRecsInputStore((current) => ({
+    ...current,
+    currentPage: 0,
+    hasRequested: true
+  }));
+}
+
 
 // Export stores for external access
 export { recsInputStore };
