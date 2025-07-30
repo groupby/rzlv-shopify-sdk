@@ -2,6 +2,7 @@ import { AppEnv } from '../utils/searchUtils.types';
 
 export { AppEnv };
 
+// TODO: abstract types to a shared location
 export interface RecsFilter {
   field: string;
   value: string;
@@ -11,10 +12,10 @@ export interface RecsFilter {
 
 export interface RecsManagerConfig {
   shopTenant: string;
-  appEnv: string; // Changed to string to match searchManager pattern
+  appEnv: AppEnv;
   name: string;
   collection: string;
-  area?: string; // Added area parameter as requested
+  area?: string;
   fields?: string[];
   pageSize: number;
   limit?: string;
@@ -74,7 +75,7 @@ export async function requestRecommendations(
   appEnv: string,
   recsOptions: RequestRecsOptions
 ): Promise<RequestRecsResponse> {
-  const endpoint = `https://${appEnv === 'Production' ? 'proxy.shp-lo' : 'proxy-dev.shp-lo'}.groupbycloud.com/${shopTenant}/api/recommendation`;
+  const endpoint = `https://${appEnv === AppEnv.Production ? AppEnv.ProxyProd : AppEnv.ProxyDev}.groupbycloud.com/${shopTenant}/api/recommendation`;
 
   const headers = {
     'Content-Type': 'application/json',
