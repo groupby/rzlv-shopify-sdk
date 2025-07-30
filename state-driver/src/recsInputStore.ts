@@ -70,4 +70,4 @@ export const recsInputStore = createStore<RecsParams>(initialRecsParams)
  */
 export const updateRecsInputStore = (updater: RecsParamsUpdater): void => {
   updateRecsParams(updater);
-}; 
+};

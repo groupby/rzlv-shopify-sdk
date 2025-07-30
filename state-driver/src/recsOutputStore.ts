@@ -95,4 +95,4 @@ recsOutputStore.watch((state) => {
  */
 export const updateRecsOutputStore = (updater: RecsResultsOutputUpdater): void => {
   updateRecsResultsOutput(updater);
-}; 
+};

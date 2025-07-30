@@ -467,7 +467,7 @@ function PaginationControls({ currentPage, totalPages }) {
 }
 ```
 
-## 8.5. Common Recommendation Use Cases
+## 8.5. Common Recommendations Use Cases
 
 ### Product Detail Page (Similar Products)
 ```javascript
