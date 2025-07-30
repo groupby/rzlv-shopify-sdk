@@ -20,14 +20,17 @@ import { requestAutocomplete, requestAutocompleteWithSearch, requestRecommendati
 import {
   initRecsManager,
   setupRecommendations,
-  fetchRecommendations,
-  nextPage,
-  previousPage,
-  resetRecs,
-  setRecsPageSize,
   recsInputStore,
   recsOutputStore,
 } from './recsManager';
+
+import {
+  nextPage,
+  previousPage, 
+  setRecsPageSize,
+  resetRecs,
+  fetchRecommendations
+} from './ui-functions/recommendationsUiFunctions';
 
 // Create recommendations namespace
 // access under sub level namespace ex:
@@ -36,15 +39,17 @@ export const recommendations = {
   // Recommendations API
   requestRecommendations,
   // Recommendations Manager
+  // TODO: further separate recs manager from "god module" to dedicated services.
   initRecsManager,
   setupRecommendations,
-  fetchRecommendations,
-  nextPage,
-  previousPage,
-  resetRecs,
-  setRecsPageSize,
   recsInputStore,
   recsOutputStore,
+  // UI functions for Recs
+  nextPage,
+  previousPage,
+  setRecsPageSize,
+  resetRecs,
+  fetchRecommendations
 };
 
 // Export all search-related functionality at the top level for backward compatibility
