@@ -17,9 +17,13 @@
   ],
   "scripts": {
     "build": "vite build",
+    "build:dev": "vite build --mode development --minify false",
     "publish-local": "npm publish --registry http://localhost:4873"
   },
   "dependencies": {
     "effector": "^23.3.0"
+  },
+  "devDependencies": {
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }
