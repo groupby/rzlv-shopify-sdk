@@ -19,5 +19,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development --minify false",
     "publish-local": "npm publish --registry http://localhost:4873"
+  },
+  "devDependencies": {
+    "vite": "^5.0.8"
   }
 }
