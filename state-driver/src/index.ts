@@ -19,17 +19,40 @@ import { requestAutocomplete, requestAutocompleteWithSearch, requestRecommendati
 // recommendations manager
 import {
   initRecsManager,
-  fetchRecommendations,
-  nextPage,
-  previousPage,
-  reset as resetRecs,
-  setPageSize as setRecsPageSize,
-  recordsStore as recsRecordsStore,
-  currentPageStore as recsCurrentPageStore,
-  loadingStore as recsLoadingStore,
-  errorStore as recsErrorStore,
+  setupRecommendations,
+  recsInputStore,
+  recsOutputStore,
 } from './recsManager';
 
+import {
+  nextPage,
+  previousPage, 
+  setRecsPageSize,
+  resetRecs,
+  fetchRecommendations
+} from './ui-functions/recommendationsUiFunctions';
+
+// Create recommendations namespace
+// access under sub level namespace ex:
+// GBISearchStateDriver.recommendations.initRecsManager(config);
+export const recommendations = {
+  // Recommendations API
+  requestRecommendations,
+  // Recommendations Manager
+  // TODO: further separate recs manager from "god module" to dedicated services.
+  initRecsManager,
+  setupRecommendations,
+  recsInputStore,
+  recsOutputStore,
+  // UI functions for Recs
+  nextPage,
+  previousPage,
+  setRecsPageSize,
+  resetRecs,
+  fetchRecommendations
+};
+
+// Export all search-related functionality at the top level for backward compatibility
 export {
   handleRefinementChange,
   handlePageSizeChange,
@@ -47,17 +70,4 @@ export {
   applyRange,
   requestAutocomplete,
   requestAutocompleteWithSearch,
-  // Recommendations API
-  requestRecommendations,
-  // Recommendations Manager
-  initRecsManager,
-  fetchRecommendations,
-  nextPage,
-  previousPage,
-  resetRecs,
-  setRecsPageSize,
-  recsRecordsStore,
-  recsCurrentPageStore,
-  recsLoadingStore,
-  recsErrorStore,
-}
+};

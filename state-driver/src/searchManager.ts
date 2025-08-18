@@ -87,6 +87,7 @@ export function initSearchManager(config: SearchManagerConfig): void {
     // - The page number is greater than 1.
     // This allows an empty search to be triggered if the user has submitted it.
     filter: (inputState: SearchParams) =>
+      inputState.gbi_query.trim() !== "" ||
       inputState.hasSubmitted === true ||
       inputState.refinements.length > 0 ||
       inputState.page > 1,
@@ -148,12 +149,6 @@ export function initSearchManager(config: SearchManagerConfig): void {
         rawResponse: result.rawResponse,
       };
     });
-
-    // **Immediately clear the "I just submitted" flag so we don’t re-fire**
-    updateInputStore((current) => ({
-      ...current,
-      hasSubmitted: false
-    }));
   });
 
   // When the search effect fails, update the Output Store with an error state.
