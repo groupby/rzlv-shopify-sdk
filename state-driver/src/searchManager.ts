@@ -5,7 +5,7 @@ import { updateOutputStore } from './searchOutputStore';
 import type { SearchParams } from './types';
 import type { ShopifyConfig } from '@rzlv/public-api-sdk/fetchSfProducts';
 import { PaginationType } from './types';
-import { debugLog, sdkConfig } from './debugLogger';
+import {debugLog, sdkConfig} from './debugLogger';
 
 /**
  * Interface defining the parameters required to trigger a search request.
@@ -70,7 +70,6 @@ let searchManagerConfig: SearchManagerConfig;
  * @param config - The static configuration values.
  */
 export function initSearchManager(config: SearchManagerConfig): void {
-  sdkConfig.debug = config.debug;
   // Add a guard so this is only initialized once.
   if ((initSearchManager as any).initialized) {
     return;

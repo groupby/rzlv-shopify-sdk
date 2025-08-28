@@ -2,7 +2,7 @@ import { createEffect, sample } from 'effector';
 import { recsInputStore, updateRecsInputStore, type RecsParams } from './recsInputStore';
 import { recsOutputStore, updateRecsOutputStore } from './recsOutputStore';
 import { requestRecommendations, type RequestRecsResponse, type RecsManagerConfig, type RecsFilter, type RecsRequestProduct } from '@rzlv/public-api-sdk';
-import { debugLog, sdkConfig } from './debugLogger';
+import {debugLog, sdkConfig} from './debugLogger';
 
 /**
  * Interface defining the parameters required to trigger a recommendations request.
