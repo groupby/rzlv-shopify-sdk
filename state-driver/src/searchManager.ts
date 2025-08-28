@@ -5,7 +5,7 @@ import { updateOutputStore } from './searchOutputStore';
 import type { SearchParams } from './types';
 import type { ShopifyConfig } from '@rzlv/public-api-sdk/fetchSfProducts';
 import { PaginationType } from './types';
-import { debugLog } from './debugLogger';
+import {debugLog, sdkConfig} from './debugLogger';
 
 /**
  * Interface defining the parameters required to trigger a search request.
@@ -36,6 +36,7 @@ export interface SearchManagerConfig {
   appEnv: string;
   collection: string;
   area: string;
+  debug?: boolean;
   collectionId?: string;
   mergeShopifyData?: boolean;  // Setting for merging Shopify data on init
   shopifyConfig?: ShopifyConfig
@@ -69,6 +70,7 @@ let searchManagerConfig: SearchManagerConfig;
  * @param config - The static configuration values.
  */
 export function initSearchManager(config: SearchManagerConfig): void {
+  sdkConfig.debug = config.debug;
   // Add a guard so this is only initialized once.
   if ((initSearchManager as any).initialized) {
     return;
