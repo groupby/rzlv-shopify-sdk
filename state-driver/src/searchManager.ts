@@ -5,7 +5,7 @@ import { updateOutputStore } from './searchOutputStore';
 import type { SearchParams } from './types';
 import type { ShopifyConfig } from '@rzlv/public-api-sdk/fetchSfProducts';
 import { PaginationType } from './types';
-import {debugLog, sdkConfig} from './debugLogger';
+import { debugLog, sdkConfig } from './debugLogger';
 
 /**
  * Interface defining the parameters required to trigger a search request.
