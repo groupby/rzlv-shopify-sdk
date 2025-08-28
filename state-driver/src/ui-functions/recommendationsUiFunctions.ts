@@ -1,5 +1,6 @@
 import { recsOutputStore } from '../recsOutputStore';
 import { updateRecsInputStore } from '../recsInputStore';
+import { debugLog } from '../debugLogger';
 
 /**
  * Navigation functions for recommendations pagination.
@@ -9,13 +10,17 @@ import { updateRecsInputStore } from '../recsInputStore';
 
 export function nextPage(): void {
   const outputState = recsOutputStore.getState();
-  
+
   updateRecsInputStore((current) => {
     const nextPageIndex = current.currentPage + 1;
     if (nextPageIndex >= outputState.pagination.totalPages) {
+      debugLog('UI:Recs', 'nextPage at end, ignoring', {
+        currentPage: current.currentPage,
+        totalPages: outputState.pagination.totalPages
+      });
       return current;
     }
-    
+    debugLog('UI:Recs', 'nextPage', { prevPage: current.currentPage, nextPage: nextPageIndex });
     return {
       ...current,
       currentPage: nextPageIndex,
@@ -27,10 +32,12 @@ export function nextPage(): void {
 export function previousPage(): void {
   updateRecsInputStore((current) => {
     if (current.currentPage <= 0) {
+      debugLog('UI:Recs', 'previousPage at start, ignoring', { currentPage: current.currentPage });
       return current;
     }
-    
+
     const prevPageIndex = current.currentPage - 1;
+    debugLog('UI:Recs', 'previousPage', { prevPage: current.currentPage, nextPage: prevPageIndex });
     return {
       ...current,
       currentPage: prevPageIndex,
@@ -40,20 +47,28 @@ export function previousPage(): void {
 }
 
 export function setRecsPageSize(size: number): void {
-  updateRecsInputStore((current) => ({
-    ...current,
-    pageSize: size,
-    currentPage: 0,
-    hasRequested: true
-  }));
+  updateRecsInputStore((current) => {
+    const newState = {
+      ...current,
+      pageSize: size,
+      currentPage: 0,
+      hasRequested: true
+    };
+    debugLog('UI:Recs', 'setRecsPageSize', { prevSize: current.pageSize, newSize: size });
+    return newState;
+  });
 }
 
 export function resetRecs(): void {
-  updateRecsInputStore((current) => ({
-    ...current,
-    currentPage: 0,
-    hasRequested: true
-  }));
+  updateRecsInputStore((current) => {
+    const newState = {
+      ...current,
+      currentPage: 0,
+      hasRequested: true
+    };
+    debugLog('UI:Recs', 'resetRecs');
+    return newState;
+  });
 }
 
 /**
@@ -61,10 +76,14 @@ export function resetRecs(): void {
  * Useful for "Refresh" buttons or manual triggers.
  */
 export function fetchRecommendations(): void {
-  updateRecsInputStore((current) => ({
-    ...current,
-    hasRequested: true
-  }));
+  updateRecsInputStore((current) => {
+    const newState = {
+      ...current,
+      hasRequested: true
+    };
+    debugLog('UI:Recs', 'fetchRecommendations');
+    return newState;
+  });
 }
 
 // TODO: tests for these functions
