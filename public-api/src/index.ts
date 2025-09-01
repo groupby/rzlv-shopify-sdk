@@ -17,6 +17,9 @@ export {
   requestRecommendations
 }
 
+// Re-export enums/constants needed by consumers
+export { AppEnv } from './utils/searchUtils.types';
+
 export type { 
   RecsProduct, 
   RecsRequestProduct, 
