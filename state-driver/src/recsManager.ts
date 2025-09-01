@@ -1,6 +1,7 @@
 import { createEffect, sample } from 'effector';
 import { recsInputStore, updateRecsInputStore, type RecsParams } from './recsInputStore';
 import { recsOutputStore, updateRecsOutputStore } from './recsOutputStore';
+import { AppEnv } from '@rzlv/public-api-sdk';
 import { requestRecommendations, type RequestRecsResponse, type RecsManagerConfig, type RecsFilter, type RecsRequestProduct } from '@rzlv/public-api-sdk';
 import { debugLog, sdkConfig } from './debugLogger';
 
@@ -10,7 +11,7 @@ import { debugLog, sdkConfig } from './debugLogger';
  */
 interface RecsManagerParams {
   shopTenant: string;
-  appEnv: string;
+  appEnv: AppEnv;
   recsOptions: {
     name: string;
     fields: string[];
@@ -30,6 +31,12 @@ interface RecsManagerParams {
     debug?: boolean;
     strictFiltering?: boolean;
   };
+}
+
+/** Function type for initRecsManager, with an optional initialized flag. */
+interface InitRecsManagerFn {
+  (config: RecsManagerConfig): void;
+  initialized?: boolean;
 }
 
 // RecsManagerConfig is now imported from @rzlv/public-api-sdk
@@ -64,10 +71,11 @@ let recsManagerConfig: RecsManagerConfig;
  *
  * @param config - The static configuration values.
  */
-export function initRecsManager(config: RecsManagerConfig): void {
+export const initRecsManager: InitRecsManagerFn = (config) => {
+  config.initialized = true;
   sdkConfig.debug = config.debug;
   // Add a guard so this is only initialized once.
-  if ((initRecsManager as { initialized?: boolean }).initialized) {
+  if (initRecsManager.initialized) {
     debugLog('Recs Manager', 'Already initialized, skipping');
     return;
   }
@@ -181,7 +189,7 @@ export function initRecsManager(config: RecsManagerConfig): void {
     }));
   });
 
-  (initRecsManager as { initialized?: boolean }).initialized = true;
+  initRecsManager.initialized = true;
   debugLog('Recs Manager', 'Initialization complete - ready for explicit requests');
 }
 

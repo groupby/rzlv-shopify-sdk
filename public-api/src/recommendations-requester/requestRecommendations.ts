@@ -3,6 +3,9 @@ import { AppEnv } from '../utils/searchUtils.types';
 export { AppEnv };
 
 // TODO: abstract types to a shared location
+/**
+ * A filter to apply to the recommendations request.
+ */
 export interface RecsFilter {
   field: string;
   value: string;
@@ -10,8 +13,12 @@ export interface RecsFilter {
   derivedFromProduct?: boolean;
 }
 
+/**
+ * Configuration options for the Recommendations Manager.
+ */
 export interface RecsManagerConfig {
   shopTenant: string;
+  /** Application environment (e.g., Production, ProxyDev) */
   appEnv: AppEnv;
   name: string;
   collection: string;
@@ -20,15 +27,18 @@ export interface RecsManagerConfig {
   pageSize: number;
   limit?: string;
   productID?: string | string[];
+  /** List of products for context-based recommendations */
   products?: RecsRequestProduct[];
   visitorId?: string;
   loginId?: string;
+  /** List of filters to apply */
   filters?: RecsFilter[];
   rawFilter?: string;
   placement?: string;
   eventType?: string;
   debug?: boolean;
   strictFiltering?: boolean;
+  initialized?: boolean;
 }
 
 export interface RequestRecsOptions {
@@ -38,9 +48,11 @@ export interface RequestRecsOptions {
   pageSize: number;
   limit?: string;
   productID?: string | string[];
+  /** List of products for context-based recommendations */
   products?: RecsRequestProduct[];
   visitorId?: string;
   loginId?: string;
+  /** List of filters to apply */
   filters?: RecsFilter[];
   rawFilter?: string;
   placement?: string;
@@ -54,14 +66,22 @@ export interface RecsRequestProduct {
   quantity?: number;
 }
 
+/**
+ * A product returned in the recommendations response.
+ */
 export interface RecsProduct {
   id: string;
   title?: string;
   handle?: string;
+  /** Additional dynamic fields */
   [key: string]: unknown;
 }
 
+/**
+ * The response from the recommendations API.
+ */
 export interface RequestRecsResponse {
+  /** Array of recommended products */
   products: RecsProduct[];
   metadata: {
     modelName: string;
@@ -70,9 +90,14 @@ export interface RequestRecsResponse {
   rawResponse: unknown;
 }
 
+/**
+ * @param shopTenant
+ * @param appEnv
+ * @param recsOptions
+ */
 export async function requestRecommendations(
   shopTenant: string,
-  appEnv: string,
+  appEnv: AppEnv,
   recsOptions: RequestRecsOptions
 ): Promise<RequestRecsResponse> {
   const endpoint = `https://${appEnv === AppEnv.Production ? AppEnv.ProxyProd : AppEnv.ProxyDev}.groupbycloud.com/${shopTenant}/api/recommendation`;
@@ -95,8 +120,8 @@ export async function requestRecommendations(
   }
 
   if (recsOptions.productID) {
-    requestBody.productID = Array.isArray(recsOptions.productID) 
-      ? recsOptions.productID 
+    requestBody.productID = Array.isArray(recsOptions.productID)
+      ? recsOptions.productID
       : [recsOptions.productID];
   }
 
@@ -147,7 +172,7 @@ export async function requestRecommendations(
   }
 
   const data = await response.json();
-  
+
   return {
     products: data.records || data.products || [],
     metadata: {
@@ -156,4 +181,4 @@ export async function requestRecommendations(
     },
     rawResponse: data,
   };
-} 
+}
