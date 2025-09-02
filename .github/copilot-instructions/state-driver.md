@@ -98,19 +98,102 @@ export interface BadOutputStore {
 }
 ```
 
-### Proper Data Flow Pattern
+### Proper Data Flow Patterns
+
+The reactive pipeline can be triggered through multiple entry points, but always follows the same core flow:
+
+**Core Reactive Flow:**
 ```
-1. UI Function updates Input Store (trigger parameters)
+[Any Input Store Update] → Manager Reacts → API Call → Output Store Update → UI Updates
+```
+
+**Data Flow Scenario 1: UI Interaction**
+```
+1. User interacts with UI (search input, pagination, filters)
    ↓
-2. Manager reacts to Input Store changes (via Effector sample)
+2. UI Function updates Input Store (trigger parameters)
+   ↓
+3. Manager reacts to Input Store changes (via Effector sample)
    ↓  
-3. Manager triggers API call (via Effector effect)
+4. Manager triggers API call (via Effector effect)
    ↓
-4. API responds with data
+5. API responds with data
    ↓
-5. Manager updates Output Store (result data)
+6. Manager updates Output Store (result data)
    ↓
-6. UI components read Output Store (reactive updates)
+7. UI components read Output Store (reactive updates)
+```
+
+**Data Flow Scenario 2: URL Navigation**
+```
+1. User navigates to URL with query parameters (/search?query=shoes&page=2)
+   ↓
+2. URL Manager parses parameters and updates Input Store
+   ↓
+3. Manager reacts to Input Store changes (via Effector sample)
+   ↓  
+4. Manager triggers API call (via Effector effect)
+   ↓
+5. API responds with data
+   ↓
+6. Manager updates Output Store (result data)
+   ↓
+7. UI components read Output Store (reactive updates)
+```
+
+**Data Flow Scenario 3: Programmatic Updates**
+```
+1. External code calls SDK functions directly (setupRecommendations, etc.)
+   ↓
+2. SDK function updates Input Store programmatically
+   ↓
+3. Manager reacts to Input Store changes (via Effector sample)
+   ↓  
+4. Manager triggers API call (via Effector effect)
+   ↓
+5. API responds with data
+   ↓
+6. Manager updates Output Store (result data)
+   ↓
+7. UI components read Output Store (reactive updates)
+```
+
+**Data Flow Scenario 4: Browser Navigation (Back/Forward)**
+```
+1. User clicks browser back/forward button
+   ↓
+2. URL Manager detects popstate event and updates Input Store
+   ↓
+3. Manager reacts to Input Store changes (via Effector sample)
+   ↓  
+4. Manager triggers API call (via Effector effect)
+   ↓
+5. API responds with data
+   ↓
+6. Manager updates Output Store (result data)
+   ↓
+7. UI components read Output Store (reactive updates)
+```
+
+**Key Insight: Multiple Entry Points, Single Pipeline**
+
+The beauty of the reactive architecture is that regardless of HOW the Input Store gets updated (UI interaction, URL parsing, programmatic calls, browser navigation), the same reactive pipeline handles the rest:
+
+```typescript
+// This sample operator doesn't care HOW the input store was updated
+sample({
+  source: searchInputStore,
+  clock: searchInputStore,
+  filter: (state) => shouldTriggerSearch(state),
+  fn: (state) => transformToApiParams(state),
+  target: searchFx
+});
+
+// These are all equivalent from the Manager's perspective:
+handleSearchInput('shoes');           // UI interaction
+parseUrlAndUpdateStore('?query=shoes'); // URL navigation  
+setupSearch({ query: 'shoes' });      // Programmatic call
+// All result in the same reactive flow
 ```
 
 ### Input/Output Store Structure
@@ -762,12 +845,14 @@ export function handlePageSizeChange(newSize: string): void {
 ## URL Management
 
 ### URL Synchronization Pattern
+The URL Manager acts as another entry point into the reactive pipeline:
+
 ```typescript
 export function initUrlManager(config: UrlManagerConfig): void {
-  // Parse initial URL state
+  // Parse initial URL state on page load
   const initialParams = parseUrlToSearchParams(config);
   
-  // Update input store with URL state
+  // Update input store with URL state (triggers reactive pipeline)
   updateInputStore((current) => ({
     ...current,
     ...initialParams
@@ -778,18 +863,65 @@ export function initUrlManager(config: UrlManagerConfig): void {
 }
 
 function setupUrlWatchers(): void {
-  // Watch store changes and update URL
+  // Watch store changes and update URL (outbound sync)
   inputStore.watch((state) => {
     const newUrl = buildUrlFromState(state);
     window.history.replaceState({}, '', newUrl);
   });
   
-  // Listen for browser navigation
+  // Listen for browser navigation (inbound sync)
   window.addEventListener('popstate', () => {
     const params = parseUrlToSearchParams(config);
+    // This update triggers the same reactive pipeline as UI interactions
     updateInputStore((current) => ({ ...current, ...params }));
   });
 }
+```
+
+### URL as Input Store Trigger
+URLs are just another way to update the Input Store:
+
+```typescript
+// These all result in the same Input Store update:
+
+// 1. UI interaction
+handleSearchInput('shoes');
+
+// 2. Direct URL navigation  
+// /search?query=shoes&page=2&refinements=color:red
+// → parseUrlToSearchParams() → updateInputStore()
+
+// 3. Programmatic navigation
+updateInputStore((current) => ({
+  ...current,
+  gbi_query: 'shoes',
+  page: 2,
+  refinements: ['color:red'],
+  hasSubmitted: true
+}));
+
+// All three trigger the same Manager reaction via Effector sample
+```
+
+### URL Manager Integration with Data Flow
+```
+URL Change (navigation/popstate)
+   ↓
+URL Manager parses parameters  
+   ↓
+URL Manager updates Input Store
+   ↓
+[Same reactive pipeline as UI interactions]
+   ↓
+Manager reacts to Input Store changes
+   ↓
+Manager triggers API call
+   ↓
+Manager updates Output Store
+   ↓
+UI components update reactively
+   ↓
+Input Store changes trigger URL update (bidirectional sync)
 ```
 
 ## Debug Logging
