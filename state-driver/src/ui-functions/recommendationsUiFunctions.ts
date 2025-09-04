@@ -86,7 +86,11 @@ export function fetchRecommendations(): void {
       ...current,
       hasRequested: true
     };
-    debugLog('UI:Recs', 'fetchRecommendations');
+    debugLog(
+        'UI:Recs',
+        'fetchRecommendations',
+        {prevRequested: current.hasRequested, newRequested: true}
+    );
     return newState;
   });
 }
