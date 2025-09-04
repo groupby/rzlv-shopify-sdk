@@ -27,6 +27,9 @@ export interface RecsParams {
   hasRequested: boolean; // Flag to control when to actually fetch
 }
 
+/**
+ * Initial state for the RecsParams store.
+ */
 const initialRecsParams: RecsParams = {
   name: '',
   fields: ['*'],
@@ -48,6 +51,9 @@ const initialRecsParams: RecsParams = {
   hasRequested: false, // Initially false - no automatic fetching
 };
 
+/**
+ * Type alias for the updater function that modifies RecsParams.
+ */
 export type RecsParamsUpdater = UpdateStateFn<RecsParams>;
 
 // Create an event that accepts an updater function for RecsParams.
