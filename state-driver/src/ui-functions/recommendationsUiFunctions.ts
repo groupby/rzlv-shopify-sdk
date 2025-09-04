@@ -71,7 +71,7 @@ export function resetRecs(): void {
       currentPage: 0,
       hasRequested: true
     };
-    debugLog('UI:Recs', 'resetRecs');
+    debugLog('UI:Recs', 'resetRecs', { prevPage: current.currentPage, newPage: 0 });
     return newState;
   });
 }
