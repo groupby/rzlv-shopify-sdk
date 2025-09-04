@@ -1,5 +1,29 @@
 # Public API Layer - Development Instructions
 
+## Documentation Maintenance Instructions for AI
+
+When working on Public API files, validate documentation accuracy:
+
+### Update Triggers:
+- **Request Function Changes**: Modifications to `*-requester/*.ts` files (signatures, parameter handling, response formats)
+- **Utility Changes**: Modifications to `utils/*.ts` files (transformation logic, validation, helper functions)
+- **Type Changes**: Updates to interfaces, enums, or type definitions
+- **Integration Changes**: Shopify integration patterns or API endpoint changes
+
+### Validation Checkpoints:
+1. **Function Signatures**: Do conceptual patterns match actual function signatures?
+2. **Stateless Design**: Are request functions remaining pure and stateless?
+3. **Response Consistency**: Are response formats staying consistent across functions?
+4. **Error Handling**: Are error handling patterns consistent and comprehensive?
+
+### Architecture Violations to Watch For:
+- Request functions storing state or having side effects
+- Inconsistent parameter order or naming across similar functions
+- Framework-specific dependencies in utilities
+- Missing validation or error handling in request functions
+
+---
+
 ## Overview
 
 The Public API layer provides stateless request functions for search, autocomplete, and recommendations. This layer handles API communication, data transformation, Shopify integration, and utility functions. It is designed to be consumed independently or as the foundation for the State Driver layer.
@@ -29,109 +53,90 @@ export async function requestFunction(
 ## Request Function Patterns
 
 ### Standard Request Structure
+**Implementation Reference**: See `requestSearch()` in `public-api/src/search-requester/requestSearch.ts`
+
+**Conceptual Pattern**:
 ```typescript
 /**
  * Descriptive JSDoc comment explaining the function.
  * Include usage examples and parameter descriptions.
  */
-export async function requestSearch(
+export async function requestFunction(
   shopTenant: string,
   appEnv: AppEnv,
-  searchOptions: RequestSearchOptions,
-  mergeShopifyData = true,
-  shopifyConfig?: ShopifyConfig
-): Promise<RequestSearchResponse> {
+  options: FunctionOptions,
+  optionalConfig?: OptionalParams
+): Promise<FunctionResponse> {
   try {
     // 1. Validate and transform input parameters
-    const searchArgs = buildSearchArguments(searchOptions);
+    validateInputs(shopTenant, appEnv, options);
+    const apiParams = transformInputs(options);
     
-    // 2. Make API call to search service
-    const searchResult = await fetchSearchResults(
-      shopTenant,
-      appEnv,
-      searchArgs
-    );
+    // 2. Make API call to service
+    const result = await makeApiCall(shopTenant, appEnv, apiParams);
     
     // 3. Transform/enhance data if needed
-    const transformedData = mergeShopifyData
-      ? await transformProductsForVariantRelevancy(searchResult, shopifyConfig)
-      : searchResult.records;
+    const processedData = await processResponse(result, optionalConfig);
     
     // 4. Return consistent response format
-    return {
-      mergedProducts: transformedData,
-      rawResponse: searchResult,
-      totalRecordCount: searchResult.totalRecordCount
-    };
+    return createStandardResponse(processedData, result);
   } catch (error) {
     // 5. Consistent error handling
-    throw new Error(`Search request failed: ${error.message}`);
+    throw new Error(`${operation} failed: ${error.message}`);
   }
 }
 ```
 
 ### Options Interface Pattern
+**Implementation Reference**: See option interfaces in `public-api/src/*-requester/*.ts` files
+
+**Conceptual Pattern**:
 ```typescript
 /**
  * Options interfaces should be descriptive and well-documented.
  */
-export interface RequestSearchOptions {
+export interface RequestFunctionOptions {
   /**
-   * The search query string. Optional for collection searches.
+   * Primary parameter with clear description.
    */
-  query?: string;
+  primaryParam: string;
   /**
-   * The collection name for the search.
+   * Required configuration parameter.
    */
-  collection: string;
+  requiredConfig: string;
   /**
-   * The area to search within.
+   * Optional parameter with default behavior described.
+   * @default defaultValue
    */
-  area: string;
+  optionalParam?: number;
   /**
-   * Page number for pagination (1-based).
-   * @default 1
+   * Array parameter for multiple values.
    */
-  page?: number;
-  /**
-   * Number of results per page.
-   * @default 12
-   */
-  pageSize?: number;
-  /**
-   * Sort order for results.
-   * @default 'relevance'
-   */
-  sortBy?: string;
-  /**
-   * Array of refinement strings for filtering.
-   */
-  refinements?: readonly string[];
-  /**
-   * Optional collection ID for Shopify integration.
-   */
-  collectionId?: string;
+  arrayParam?: readonly string[];
 }
 ```
 
 ### Response Interface Pattern
+**Implementation Reference**: See response interfaces in `public-api/src/*-requester/*.ts` files
+
+**Conceptual Pattern**:
 ```typescript
 /**
  * Response interfaces should be consistent across functions.
  */
-export interface RequestSearchResponse {
+export interface RequestFunctionResponse {
   /**
-   * Processed product data, ready for consumption.
+   * Processed data, ready for consumption.
    */
-  mergedProducts: ProductDetail[];
+  processedData: ProcessedItem[];
   /**
-   * Raw response from the search API (for debugging/advanced use).
+   * Raw response from API (for debugging/advanced use).
    */
-  rawResponse: SearchResult;
+  rawResponse: RawApiResponse;
   /**
-   * Total number of available records.
+   * Additional metadata from the response.
    */
-  totalRecordCount: number;
+  metadata: ResponseMetadata;
 }
 ```
 

@@ -4,6 +4,30 @@
 
 This is a TypeScript-based SDK that provides search, autocomplete, and recommendations functionality for Shopify stores. The SDK is architected with two distinct layers: a **State Driver** for reactive state management and a **Public API** for stateless request functions. This separation allows for flexible integration patterns - consumers can use the full stateful experience or just the request functions.
 
+## Documentation Maintenance Instructions for AI
+
+When working on this codebase, validate that documentation remains accurate by checking:
+
+### Update Triggers:
+- **Manager Pattern Changes**: If initialization, reactive pipeline, or effect handling patterns change in `*Manager.ts` files
+- **Store Pattern Changes**: If Input/Output store structures or updater patterns change in `*Store.ts` files  
+- **Architecture Violations**: If Input/Output store separation is compromised or cross-layer dependencies are introduced
+- **New Anti-Patterns**: If problematic code patterns emerge that should be documented as examples to avoid
+
+### Validation Checkpoints:
+1. **Core Patterns**: Do conceptual examples still reflect actual implementation patterns?
+2. **Store Separation**: Is Input/Output store separation maintained in actual code?
+3. **File Organization**: Are files staying within size/responsibility guidelines?
+4. **Type Safety**: Are `any` types being eliminated as stated in principles?
+
+### What to Update:
+- Conceptual code examples that no longer match implementation patterns
+- Anti-pattern examples if new issues are discovered  
+- Architecture principles if fundamental changes occur
+- File organization guidelines if structure evolves
+
+---
+
 ## Repository Structure
 
 ```
@@ -200,73 +224,87 @@ sample({
 ## Architecture Patterns
 
 ### Manager Pattern (State Driver)
-Managers orchestrate data flow between input stores, API calls, and output stores:
+Managers orchestrate data flow between input stores, API calls, and output stores.
 
+**Pattern Reference**: See `initSearchManager()` in `state-driver/src/searchManager.ts` for complete implementation.
+
+**Conceptual Pattern**:
 ```typescript
-export function initSearchManager(config: SearchManagerConfig): void {
-  // Store static configuration
-  searchManagerConfig = config;
+export function initManager(config: ManagerConfig): void {
+  // 1. Store static configuration
+  storeConfig(config);
   
-  // Set up reactive pipeline
+  // 2. Set up reactive pipeline using Effector sample
+  setupReactivePipeline();
+  
+  // 3. Handle API responses and errors
+  setupEffectHandlers();
+}
+
+// Reactive pipeline concept
+function setupReactivePipeline(): void {
   sample({
-    source: searchInputStore,
-    filter: (state) => state.hasSubmitted,
-    fn: (state) => transformStateToParams(state),
-    target: searchFx
-  });
-  
-  // Handle success/error states
-  searchFx.done.watch(({ result }) => {
-    updateOutputStore((current) => ({
-      ...current,
-      products: result.mergedProducts,
-      loading: false
-    }));
+    source: inputStore,
+    filter: (state) => shouldTriggerRequest(state),
+    fn: (state) => transformToApiParams(state),
+    target: apiEffect
   });
 }
 ```
 
 ### Store Pattern (State Driver)
-All stores follow input/output pattern with updater functions:
+All stores follow input/output pattern with updater functions.
 
+**Pattern Reference**: See `searchInputStore.ts` and `searchOutputStore.ts` for complete implementations.
+
+**Conceptual Pattern**:
 ```typescript
-// Input Store Pattern
-export type StateUpdater = (state: State) => State;
-export const updateStore = createEvent<StateUpdater>();
+// Input Store Pattern - triggers for API calls
+export type StateUpdater<T> = (state: T) => T;
+export const updateStore = createEvent<StateUpdater<T>>();
 export const store = createStore(initialState)
   .on(updateStore, (state, updater) => updater(state));
 
 // Helper function for external use
-export const updateStoreHelper = (updater: StateUpdater): void => {
+export const updateStoreHelper = (updater: StateUpdater<T>): void => {
   updateStore(updater);
 };
 ```
 
 ### Request Function Pattern (Public API)
-Stateless functions with consistent interfaces:
+Stateless functions with consistent interfaces.
 
+**Pattern Reference**: See `requestSearch()` in `public-api/src/search-requester/requestSearch.ts` for complete implementation.
+
+**Conceptual Pattern**:
 ```typescript
-export async function requestSearch(
+export async function requestFunction(
   shopTenant: string,
   appEnv: AppEnv,
-  searchOptions: RequestSearchOptions,
-  mergeShopifyData = true,
-  shopifyConfig?: ShopifyConfig
-): Promise<RequestSearchResponse> {
-  // Implementation
+  options: FunctionOptions,
+  optionalParams?: OptionalConfig
+): Promise<FunctionResponse> {
+  // 1. Validate inputs
+  // 2. Transform parameters  
+  // 3. Make API call
+  // 4. Transform response
+  // 5. Return consistent format
 }
 ```
 
 ### UI Function Pattern (State Driver)
-Framework-agnostic functions that update stores:
+Framework-agnostic functions that update stores.
 
+**Pattern Reference**: See functions in `state-driver/src/ui-functions/` for complete implementations.
+
+**Conceptual Pattern**:
 ```typescript
-export function handleSearchInput(newQuery: string): void {
+export function handleUserAction(actionData: ActionData): void {
   updateInputStore((current) => ({
     ...current,
-    gbi_query: newQuery,
-    page: 1,
-    hasSubmitted: true
+    [relevantField]: actionData,
+    page: 1, // Reset pagination if needed
+    hasSubmitted: true // Trigger request if needed
   }));
 }
 ```

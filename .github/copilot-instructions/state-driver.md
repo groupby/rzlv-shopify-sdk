@@ -1,5 +1,30 @@
 # State Driver Layer - Development Instructions
 
+## Documentation Maintenance Instructions for AI
+
+When working on State Driver files, validate documentation accuracy:
+
+### Update Triggers:
+- **Manager Changes**: Modifications to `*Manager.ts` files (initialization, reactive pipeline, effect handling)
+- **Store Changes**: Modifications to `*Store.ts` files (structure, updater patterns, initial state)
+- **UI Function Changes**: Modifications to `ui-functions/*` files (parameter handling, store updates)
+- **Type Changes**: Modifications to `types.ts` (core interfaces, enums)
+
+### Validation Checkpoints:
+1. **Input/Output Separation**: Are stores maintaining strict separation of trigger vs result state?
+2. **Manager Patterns**: Do managers still follow the initialization → reactive pipeline → effect handlers pattern?
+3. **Updater Functions**: Are all store updates using immutable updater patterns?
+4. **File Organization**: Are files staying focused and under ~200 lines?
+
+### Architecture Violations to Watch For:
+- Result data appearing in Input Stores
+- Trigger parameters appearing in Output Stores  
+- Direct store mutations instead of updater functions
+- Managers bypassing the reactive pipeline
+- Framework-specific code in UI functions
+
+---
+
 ## Overview
 
 The State Driver provides reactive state management for the Shopify SDK using Effector. This layer manages application state, coordinates API calls, handles URL synchronization, and provides framework-agnostic UI interaction functions.
@@ -200,34 +225,46 @@ setupSearch({ query: 'shoes' });      // Programmatic call
 Every domain (search, recommendations) has paired input/output stores:
 
 ```typescript
+### Input/Output Store Structure
+Every domain (search, recommendations) has paired input/output stores.
+
+**Implementation References**: 
+- Input Store: `state-driver/src/searchInputStore.ts`
+- Output Store: `state-driver/src/searchOutputStore.ts`
+
+**Conceptual Pattern**:
+```typescript
 // Input Store Pattern - Parameters that trigger requests
 export interface DomainParams {
-  // Core trigger parameters
-  parameterThatTriggersRequest: string;
-  anotherTriggerParameter: number;
+  // Core trigger parameters that cause API calls
+  triggerParameter: string;
+  anotherTrigger: number;
   
-  // Control flags
-  hasSubmitted?: boolean;        // Explicit action trigger
-  hasRequested?: boolean;        // Generic request trigger
-  
-  // All fields here should answer: "Does changing this trigger an API call?"
+  // Control flags for explicit actions
+  hasSubmitted?: boolean;
+  hasRequested?: boolean;
 }
 
-const initialParams: DomainParams = {
-  parameterThatTriggersRequest: '',
-  anotherTriggerParameter: 0,
-  hasSubmitted: false
-};
+// Output Store Pattern - Results from requests  
+export interface DomainOutput {
+  // Primary API results
+  data: ResultData[];
+  metadata: ResponseMetadata;
+  
+  // Request state indicators
+  loading: boolean;
+  error: string | null;
+  
+  // Debug/reference data
+  rawResponse?: unknown;
+}
 
-export type DomainParamsUpdater = (state: DomainParams) => DomainParams;
-export const updateDomainParams = createEvent<DomainParamsUpdater>();
-export const domainInputStore = createStore(initialParams)
-  .on(updateDomainParams, (state, updater) => updater(state));
-
-// Helper for external use
-export const updateDomainStore = (updater: DomainParamsUpdater): void => {
-  updateDomainParams(updater);
-};
+// Standard updater pattern for both stores
+export type DomainUpdater<T> = (state: T) => T;
+export const updateDomain = createEvent<DomainUpdater<T>>();
+export const domainStore = createStore(initialState)
+  .on(updateDomain, (state, updater) => updater(state));
+```
 ```
 
 ```typescript
@@ -427,15 +464,20 @@ function handleSuccessState({ result, params }): void {
 ```
 
 ### Manager Initialization
+**Implementation Reference**: See `initSearchManager()` in `state-driver/src/searchManager.ts`
+
+**Conceptual Pattern**:
 ```typescript
 export interface ManagerConfig {
+  // Required static configuration
   shopTenant: string;
   appEnv: string;
-  // Static configuration that doesn't change
   collection: string;
   area: string;
+  
   // Optional configuration
   debug?: boolean;
+  mergeShopifyData?: boolean;
 }
 
 let managerConfig: ManagerConfig;
@@ -447,30 +489,19 @@ export function initManager(config: ManagerConfig): void {
     return;
   }
   
-  debugLog('Manager', 'Initializing with config', config);
+  // Store configuration and setup pipeline
   storeManagerConfig(config);
-  
-  // Set up reactive pipeline
   setupReactivePipeline();
+  setupEffectHandlers();
   
   markManagerAsInitialized();
-}
-
-// Helper functions for cleaner code
-function isManagerInitialized(): boolean {
-  return (initManager as any).initialized === true;
-}
-
-function markManagerAsInitialized(): void {
-  (initManager as any).initialized = true;
-}
-
-function storeManagerConfig(config: ManagerConfig): void {
-  managerConfig = config;
 }
 ```
 
 ### Effect and Sample Pattern
+**Implementation Reference**: See reactive pipeline setup in `state-driver/src/searchManager.ts`
+
+**Conceptual Pattern**:
 ```typescript
 // GOOD: Extract complex logic into separate functions
 function setupReactivePipeline(): void {
@@ -479,63 +510,29 @@ function setupReactivePipeline(): void {
     clock: inputStore,
     filter: shouldTriggerRequest,
     fn: transformInputToApiParams,
-    target: domainFx
+    target: domainEffect
   });
 }
 
-// GOOD: Focused filter function
+function setupEffectHandlers(): void {
+  domainEffect.pending.watch(handlePendingState);
+  domainEffect.done.watch(handleSuccessState);
+  domainEffect.fail.watch(handleErrorState);
+}
+
+// Focused helper functions
 function shouldTriggerRequest(state: InputParams): boolean {
   return state.hasSubmitted || 
          state.page > 1 || 
          state.refinements.length > 0;
 }
 
-// GOOD: Focused transformation function  
 function transformInputToApiParams(state: InputParams): ApiParams {
   return {
     shopTenant: managerConfig.shopTenant,
     appEnv: managerConfig.appEnv,
     options: buildOptionsFromState(state)
   };
-}
-
-// GOOD: Separate effect handlers
-function setupEffectHandlers(): void {
-  domainFx.pending.watch(handlePendingState);
-  domainFx.done.watch(handleSuccessState);
-  domainFx.fail.watch(handleErrorState);
-}
-
-function handlePendingState(isPending: boolean): void {
-  if (isPending) {
-    updateOutputStore((current) => ({
-      ...current,
-      loading: true,
-      error: null
-    }));
-  }
-}
-
-function handleSuccessState({ result, params }): void {
-  // GOOD: Extract complex pagination logic
-  const paginatedData = processPaginatedResponse(result, params);
-  
-  updateOutputStore((current) => ({
-    ...current,
-    ...paginatedData,
-    loading: false,
-    error: null,
-    rawResponse: result.rawResponse
-  }));
-}
-
-function handleErrorState({ error }): void {
-  debugLog('Manager', 'Effect error', error);
-  updateOutputStore((current) => ({
-    ...current,
-    loading: false,
-    error: formatErrorMessage(error)
-  }));
 }
 ```
 
