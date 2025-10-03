@@ -84,13 +84,16 @@ export function initSearchManager(config: SearchManagerConfig): void {
     // Only trigger the search effect when one of the following is true:
     // - The user has explicitly submitted a search (hasSubmitted flag), OR
     // - There are any refinements, OR
-    // - The page number is greater than 1.
-    // This allows an empty search to be triggered if the user has submitted it.
+    // - The page number is greater than 1, OR
+    // - We are on a collection page (collectionId is defined).
+    // This allows an empty search to be triggered if the user has submitted it,
+    // and ensures collection pages trigger searches even when refinements are cleared.
     filter: (inputState: SearchParams) =>
       inputState.gbi_query.trim() !== "" ||
       inputState.hasSubmitted === true ||
       inputState.refinements.length > 0 ||
-      inputState.page > 1,
+      inputState.page > 1 ||
+      inputState.collectionId !== undefined,
     fn: (inputState: SearchParams): SearchManagerParams => {
       return {
         shopTenant: searchManagerConfig.shopTenant,
