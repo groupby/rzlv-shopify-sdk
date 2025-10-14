@@ -40,12 +40,18 @@ export function previousPage(): void {
 }
 
 export function setRecsPageSize(size: number): void {
-  updateRecsInputStore((current) => ({
-    ...current,
-    pageSize: size,
-    currentPage: 0,
-    hasRequested: true
-  }));
+  updateRecsInputStore((current) => {
+    if (size <= 0) {
+      return current;
+    }
+
+    return {
+      ...current,
+      pageSize: size,
+      currentPage: 0,
+      hasRequested: true
+    };
+  });
 }
 
 export function resetRecs(): void {

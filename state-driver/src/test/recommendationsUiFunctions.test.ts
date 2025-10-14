@@ -154,26 +154,26 @@ describe('recommendationsUiFunctions', () => {
       expect(inputState.hasRequested).toBe(true);
     });
 
-    it('should handle zero page size', () => {
-      updateRecsInputStore((current) => ({ ...current, pageSize: 10 }));
+    it('should reject zero page size', () => {
+      updateRecsInputStore((current) => ({ ...current, pageSize: 10, currentPage: 2, hasRequested: false }));
 
       setRecsPageSize(0);
 
       const inputState = recsInputStore.getState();
-      expect(inputState.pageSize).toBe(0);
-      expect(inputState.currentPage).toBe(0);
-      expect(inputState.hasRequested).toBe(true);
+      expect(inputState.pageSize).toBe(10);
+      expect(inputState.currentPage).toBe(2);
+      expect(inputState.hasRequested).toBe(false);
     });
 
-    it('should handle negative page size', () => {
-      updateRecsInputStore((current) => ({ ...current, pageSize: 10 }));
+    it('should reject negative page size', () => {
+      updateRecsInputStore((current) => ({ ...current, pageSize: 10, currentPage: 3, hasRequested: false }));
 
       setRecsPageSize(-5);
 
       const inputState = recsInputStore.getState();
-      expect(inputState.pageSize).toBe(-5);
-      expect(inputState.currentPage).toBe(0);
-      expect(inputState.hasRequested).toBe(true);
+      expect(inputState.pageSize).toBe(10);
+      expect(inputState.currentPage).toBe(3);
+      expect(inputState.hasRequested).toBe(false);
     });
 
     it('should handle very large page size', () => {
@@ -301,6 +301,18 @@ describe('recommendationsUiFunctions', () => {
       setRecsPageSize(15);
 
       expect(recsInputStore.getState().hasRequested).toBe(true);
+    });
+
+    it('should remain false when setRecsPageSize receives invalid value', () => {
+      updateRecsInputStore((current) => ({ ...current, hasRequested: false }));
+
+      setRecsPageSize(0);
+
+      expect(recsInputStore.getState().hasRequested).toBe(false);
+
+      setRecsPageSize(-10);
+
+      expect(recsInputStore.getState().hasRequested).toBe(false);
     });
 
     it('should be set to true by resetRecs', () => {
