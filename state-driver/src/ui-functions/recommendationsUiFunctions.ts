@@ -9,13 +9,13 @@ import { updateRecsInputStore } from '../recsInputStore';
 
 export function nextPage(): void {
   const outputState = recsOutputStore.getState();
-  
+
   updateRecsInputStore((current) => {
     const nextPageIndex = current.currentPage + 1;
     if (nextPageIndex >= outputState.pagination.totalPages) {
       return current;
     }
-    
+
     return {
       ...current,
       currentPage: nextPageIndex,
@@ -29,7 +29,7 @@ export function previousPage(): void {
     if (current.currentPage <= 0) {
       return current;
     }
-    
+
     const prevPageIndex = current.currentPage - 1;
     return {
       ...current,
@@ -66,5 +66,3 @@ export function fetchRecommendations(): void {
     hasRequested: true
   }));
 }
-
-// TODO: tests for these functions
