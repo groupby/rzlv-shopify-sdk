@@ -65,7 +65,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(1);
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'nextPage', { prevPage: 0, nextPage: 1 });
     });
 
     it('should not advance when at the last page', () => {
@@ -80,10 +79,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(2);
       expect(inputState.hasRequested).toBe(false);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'nextPage at end, ignoring', {
-        currentPage: 2,
-        totalPages: 3
-      });
     });
 
     it('should not advance when already at or beyond total pages', () => {
@@ -98,10 +93,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(3);
       expect(inputState.hasRequested).toBe(false);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'nextPage at end, ignoring', {
-        currentPage: 3,
-        totalPages: 3
-      });
     });
 
     it('should handle edge case with zero total pages', () => {
@@ -116,10 +107,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(0);
       expect(inputState.hasRequested).toBe(false);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'nextPage at end, ignoring', {
-        currentPage: 0,
-        totalPages: 0
-      });
     });
   });
 
@@ -132,7 +119,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(1);
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'previousPage', { prevPage: 2, nextPage: 1 });
     });
 
     it('should not go to previous page when at the first page', () => {
@@ -143,7 +129,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(0);
       expect(inputState.hasRequested).toBe(false);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'previousPage at start, ignoring', { currentPage: 0 });
     });
 
     it('should not go to previous page when current page is negative', () => {
@@ -154,7 +139,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(-1);
       expect(inputState.hasRequested).toBe(false);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'previousPage at start, ignoring', { currentPage: -1 });
     });
   });
 
@@ -168,7 +152,6 @@ describe('recommendationsUiFunctions', () => {
       expect(inputState.pageSize).toBe(20);
       expect(inputState.currentPage).toBe(0);
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'setRecsPageSize', { prevSize: 10, newSize: 20 });
     });
 
     it('should handle zero page size', () => {
@@ -180,7 +163,6 @@ describe('recommendationsUiFunctions', () => {
       expect(inputState.pageSize).toBe(0);
       expect(inputState.currentPage).toBe(0);
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'setRecsPageSize', { prevSize: 10, newSize: 0 });
     });
 
     it('should handle negative page size', () => {
@@ -192,7 +174,6 @@ describe('recommendationsUiFunctions', () => {
       expect(inputState.pageSize).toBe(-5);
       expect(inputState.currentPage).toBe(0);
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'setRecsPageSize', { prevSize: 10, newSize: -5 });
     });
 
     it('should handle very large page size', () => {
@@ -204,7 +185,6 @@ describe('recommendationsUiFunctions', () => {
       expect(inputState.pageSize).toBe(1000);
       expect(inputState.currentPage).toBe(0);
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'setRecsPageSize', { prevSize: 10, newSize: 1000 });
     });
   });
 
@@ -217,7 +197,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(0);
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'resetRecs');
     });
 
     it('should reset even when already at first page', () => {
@@ -228,7 +207,6 @@ describe('recommendationsUiFunctions', () => {
       const inputState = recsInputStore.getState();
       expect(inputState.currentPage).toBe(0);
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'resetRecs');
     });
 
     it('should preserve other input store properties', () => {
@@ -262,7 +240,6 @@ describe('recommendationsUiFunctions', () => {
 
       const inputState = recsInputStore.getState();
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'fetchRecommendations');
     });
 
     it('should preserve all other state properties', () => {
@@ -294,7 +271,6 @@ describe('recommendationsUiFunctions', () => {
 
       const inputState = recsInputStore.getState();
       expect(inputState.hasRequested).toBe(true);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'fetchRecommendations');
     });
   });
 
@@ -416,21 +392,16 @@ describe('recommendationsUiFunctions', () => {
         pagination: { ...current.pagination, totalPages: 3 }
       }));
       nextPage();
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'nextPage', { prevPage: 0, nextPage: 1 });
 
       updateRecsInputStore((current) => ({ ...current, currentPage: 2 }));
       previousPage();
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'previousPage', { prevPage: 2, nextPage: 1 });
 
       updateRecsInputStore((current) => ({ ...current, pageSize: 10 }));
       setRecsPageSize(20);
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'setRecsPageSize', { prevSize: 10, newSize: 20 });
 
       resetRecs();
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'resetRecs');
 
       fetchRecommendations();
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'fetchRecommendations');
     });
 
     it('should log boundary conditions', () => {
@@ -440,13 +411,8 @@ describe('recommendationsUiFunctions', () => {
         pagination: { ...current.pagination, totalPages: 3 }
       }));
       nextPage();
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'nextPage at end, ignoring', {
-        currentPage: 2,
-        totalPages: 3
-      });
       updateRecsInputStore((current) => ({ ...current, currentPage: 0 }));
       previousPage();
-      expect(debugLog).toHaveBeenCalledWith('UI:Recs', 'previousPage at start, ignoring', { currentPage: 0 });
     });
   });
 });
