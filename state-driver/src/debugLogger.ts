@@ -1,5 +1,5 @@
 export interface SDKConfig {
-  debug: boolean;
+  debug?: boolean;
 }
 
 // Global configuration for our SDK debug logging.
