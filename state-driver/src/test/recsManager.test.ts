@@ -3,13 +3,29 @@ import { initRecsManager, setupRecommendations, recsInputStore, recsOutputStore 
 import { updateRecsInputStore } from '../recsInputStore';
 import { updateRecsOutputStore } from '../recsOutputStore';
 import { sdkConfig } from '../debugLogger';
+import type { RecsManagerConfig } from '@rzlv/public-api-sdk';
+
+// Type definitions for the mocked module
+enum AppEnv {
+	Production = 'production',
+	ProxyDev = 'proxydev',
+	ProxyProd = 'proxyprod',
+}
+
+type RecsProduct = { id: string; [key: string]: unknown };
+type RequestRecsResponse = {
+	products: RecsProduct[];
+	metadata: { modelName: string; totalCount: number };
+	rawResponse: unknown;
+};
+
+// Interface for initRecsManager with the initialized property
+interface InitRecsManagerWithState {
+	(config: RecsManagerConfig): void;
+	initialized?: boolean;
+}
 
 vi.mock('@rzlv/public-api-sdk', () => {
-	enum AppEnv {
-		Production = 'production',
-		ProxyDev = 'proxydev',
-		ProxyProd = 'proxyprod',
-	}
 	type RecsProduct = { id: string; [key: string]: unknown };
 	type RequestRecsResponse = {
 		products: RecsProduct[];
@@ -34,8 +50,7 @@ vi.mock('@rzlv/public-api-sdk', () => {
 	};
 });
 
-let AppEnvRef: any;
-let requestRecommendationsRef: any;
+let requestRecommendationsRef: ReturnType<typeof vi.fn>;
 
 function resetStores() {
 	updateRecsInputStore(() => ({
@@ -73,46 +88,45 @@ describe('recsManager', () => {
 	beforeEach(async () => {
 		resetStores();
 		const mod = await import('@rzlv/public-api-sdk');
-		AppEnvRef = mod.AppEnv;
-		requestRecommendationsRef = mod.requestRecommendations;
-		(requestRecommendationsRef as any)?.mockClear?.();
-		(initRecsManager as any).initialized = undefined;
+		requestRecommendationsRef = mod.requestRecommendations as ReturnType<typeof vi.fn>;
+		requestRecommendationsRef.mockClear();
+		(initRecsManager as InitRecsManagerWithState).initialized = undefined;
 		sdkConfig.debug = false;
 	});
 
 	it('initRecsManager initializes once and is idempotent', async () => {
 		initRecsManager({
 			shopTenant: 'tenant',
-			appEnv: AppEnvRef.Production,
+			appEnv: AppEnv.Production as any,
 			name: 'model',
 			collection: 'products',
 			pageSize: 5,
 			debug: true,
 		});
-		expect((initRecsManager as any).initialized).toBe(true);
+		expect((initRecsManager as InitRecsManagerWithState).initialized).toBe(true);
 		expect(sdkConfig.debug).toBe(true);
 
 		initRecsManager({
 			shopTenant: 'tenant2',
-			appEnv: AppEnvRef.Production,
+			appEnv: AppEnv.Production as any,
 			name: 'model2',
 			collection: 'products',
 			pageSize: 10,
 			debug: false,
 		});
-		expect((initRecsManager as any).initialized).toBe(true);
+		expect((initRecsManager as InitRecsManagerWithState).initialized).toBe(true);
 	});
 
 	it('setupRecommendations updates input store and triggers request through effect', async () => {
 		initRecsManager({
 			shopTenant: 'tenant',
-			appEnv: AppEnvRef.Production,
+			appEnv: AppEnv.Production as any,
 			name: 'model',
 			collection: 'products',
 			pageSize: 5,
 		});
 
-		(requestRecommendationsRef as any)?.mockClear?.();
+		requestRecommendationsRef.mockClear();
 
 		expect(recsInputStore.getState().hasRequested).toBe(false);
 
@@ -131,7 +145,7 @@ describe('recsManager', () => {
 		expect(requestRecommendationsRef).toHaveBeenCalledTimes(2);
 		expect(requestRecommendationsRef).toHaveBeenCalledWith(
 			'tenant',
-			AppEnvRef.Production,
+			AppEnv.Production,
 			expect.objectContaining({
 				name: 'model',
 				collection: 'products',
@@ -153,7 +167,7 @@ describe('recsManager', () => {
 	it('does not trigger when name is empty (filter guard)', async () => {
 		initRecsManager({
 			shopTenant: 'tenant',
-			appEnv: AppEnvRef.Production,
+			appEnv: AppEnv.Production as any,
 			name: 'model',
 			collection: 'products',
 			pageSize: 5,
