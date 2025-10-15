@@ -94,27 +94,61 @@ export function initUrlManager({
   }
   initialParams.paginationType = paginationType;
 
-  // Merge initialParams into the current Input Store state.
-  // Set hasSubmitted to true only if the URL indicates an actual search action.
-  updateInputStore((current: SearchParams): SearchParams => ({
-    ...current,
-    ...initialParams,
-    hasSubmitted:
-      initialParams.gbi_query.trim() !== '' ||
-      initialParams.refinements.length > 0 ||
-      initialParams.page > 1,
-  }));
-  debugLog('URL Manager', 'Input store updated with URL parameters', initialParams);
+  // Check if there are actual URL parameters that need to be applied
+  const hasUrlSearchParams = 
+    initialParams.gbi_query.trim() !== '' ||
+    initialParams.refinements.length > 0 ||
+    initialParams.page > 1 ||
+    initialParams.sort_by !== 'relevance' ||
+    initialParams.pagesize !== defaultPagesize;
+
+  // Only update Input Store if there are URL parameters to parse
+  // This prevents unnecessary state updates on clean collection URLs
+  if (hasUrlSearchParams) {
+    // Merge initialParams into the current Input Store state.
+    // Set hasSubmitted to true only if the URL indicates an actual search action.
+    updateInputStore((current: SearchParams): SearchParams => ({
+      ...current,
+      ...initialParams,
+      hasSubmitted:
+        initialParams.gbi_query.trim() !== '' ||
+        initialParams.refinements.length > 0 ||
+        initialParams.page > 1,
+    }));
+    debugLog('URL Manager', 'Input store updated with URL parameters', initialParams);
+  } else {
+    debugLog('URL Manager', 'No URL parameters to parse, skipping state update');
+  }
 
   // Subscribe to changes in the Input Store and update the URL accordingly.
   searchInputStore.watch((params) => {
+    debugLog('URL Manager', 'URL watcher triggered with params:', params);
+    
     // Only update the URL if at least one search parameter indicates a search action.
-    if (
+    // For collection pages, always update URL to maintain state synchronization
+    // For non-collection pages, update URL when there's search activity or hasSubmitted
+    const hasSearchActivity = 
       params.gbi_query.trim() !== '' ||
-      params.hasSubmitted === true ||
       params.refinements.length > 0 ||
-      params.page > 1
-    ) {
+      params.page > 1;
+      
+    const isCollectionPage = params.source === SearchSource.COLLECTION || (params.source as string) === 'collection';
+    const shouldUpdateUrlForNonCollection = !isCollectionPage && params.hasSubmitted === true;
+    
+    // For collection pages, always update URL to keep it in sync with state
+    // For non-collection pages, update URL based on hasSubmitted or search activity
+    const shouldUpdateUrl = isCollectionPage || hasSearchActivity || shouldUpdateUrlForNonCollection;
+    
+    debugLog('URL Manager', 'URL update decision:', {
+      hasSearchActivity,
+      isCollectionPage,
+      shouldUpdateUrlForNonCollection,
+      shouldUpdateUrl,
+      source: params.source,
+      hasSubmitted: params.hasSubmitted
+    });
+
+    if (shouldUpdateUrl) {
       const urlParams = new URLSearchParams();
 
       // Map our search state to URL parameters.
@@ -127,7 +161,7 @@ export function initUrlManager({
 
       // Determine the new path based on the source.
       let newPath = '/search';
-      if (params.source === SearchSource.COLLECTION) {
+      if (params.source === SearchSource.COLLECTION || (params.source as string) === 'collection') {
         newPath = window.location.pathname;
       }
 

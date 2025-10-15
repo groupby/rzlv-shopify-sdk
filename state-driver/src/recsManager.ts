@@ -184,7 +184,7 @@ export const initRecsManager: InitRecsManagerFn = (config) => {
     }));
   });
 
-  initRecsManager.initialized = true;
+  (initRecsManager as { initialized?: boolean }).initialized = true;
   debugLog('Recs Manager', 'Initialization complete - ready for explicit requests');
 }
 
