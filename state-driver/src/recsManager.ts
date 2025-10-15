@@ -2,7 +2,7 @@ import { createEffect, sample } from 'effector';
 import { recsInputStore, updateRecsInputStore, type RecsParams } from './recsInputStore';
 import { recsOutputStore, updateRecsOutputStore } from './recsOutputStore';
 import { requestRecommendations, type RequestRecsResponse, type RecsManagerConfig, type RecsFilter, type RecsRequestProduct } from '@rzlv/public-api-sdk';
-import { debugLog } from './debugLogger';
+import { debugLog, sdkConfig } from './debugLogger';
 
 /**
  * Interface defining the parameters required to trigger a recommendations request.
@@ -74,6 +74,11 @@ export function initRecsManager(config: RecsManagerConfig): void {
   debugLog('Recs Manager', 'Initializing with config', config);
   // Store the configuration for use in every recommendations request.
   recsManagerConfig = config;
+
+  // Set our global debug flag
+  if (config.debug !== undefined) {
+    sdkConfig.debug = config.debug;
+  }
 
   // Wire up the sample operator so that changes to the recsInputStore can trigger recommendations.
   sample({
