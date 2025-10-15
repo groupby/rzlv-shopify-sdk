@@ -1,12 +1,93 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { nextPage, previousPage, setRecsPageSize, resetRecs, fetchRecommendations } from '../ui-functions/recommendationsUiFunctions';
 import { recsInputStore, updateRecsInputStore } from '../recsInputStore';
-import { recsOutputStore, updateRecsOutputStore } from '../recsOutputStore';
+import { recsOutputStore, updateRecsOutputStore, type RecsResultsOutput } from '../recsOutputStore';
 import { debugLog } from '../debugLogger';
 
 vi.mock('../debugLogger', () => ({
   debugLog: vi.fn(),
 }));
+
+/**
+ * Test-specific type that allows edge case values (undefined, NaN) for testing error handling.
+ * This provides type-safe testing of invalid values without using 'as any'.
+ */
+type TestPaginationValue = number | undefined | typeof NaN;
+
+/**
+ * Helper to create test output state with potentially invalid pagination values for edge case testing.
+ *
+ * This function provides a type-safe way to test error handling without using 'as any' throughout
+ * the test file. It centralizes the type assertion in one place and makes the intent explicit.
+ *
+ * @param overrides - Partial pagination values, can include edge cases like undefined or NaN
+ * @returns Complete RecsResultsOutput state for testing
+ *
+ * @example
+ * // Test with undefined totalPages
+ * updateRecsOutputStore(() => createTestOutputState({ totalPages: undefined }));
+ *
+ * @example
+ * // Test with NaN values
+ * updateRecsOutputStore(() => createTestOutputState({ totalPages: NaN, currentPage: NaN }));
+ */
+function createTestOutputState(overrides: {
+  totalPages?: TestPaginationValue;
+  currentPage?: TestPaginationValue;
+  pageSize?: TestPaginationValue;
+  totalRecords?: TestPaginationValue;
+}): RecsResultsOutput {
+  return {
+    products: [],
+    allProducts: [],
+    pagination: {
+      currentPage: (overrides.currentPage ?? 0) as number,
+      pageSize: (overrides.pageSize ?? 10) as number,
+      totalPages: (overrides.totalPages ?? 0) as number,
+      totalRecords: (overrides.totalRecords ?? 0) as number,
+    },
+    metadata: { modelName: 'test', totalCount: 30 },
+    loading: false,
+    error: null,
+    rawResponse: undefined,
+  };
+}
+
+/**
+ * Helper to create test input state with potentially invalid currentPage value for edge case testing.
+ *
+ * This function provides a type-safe way to test error handling without using 'as any' throughout
+ * the test file. It centralizes the type assertion in one place and makes the intent explicit.
+ *
+ * @param currentPage - Page number value, can include edge cases like undefined or NaN
+ * @returns Complete input state for testing
+ *
+ * @example
+ * // Test with NaN currentPage
+ * updateRecsInputStore(() => createTestInputState(NaN));
+ */
+function createTestInputState(currentPage: TestPaginationValue) {
+  return {
+    name: 'test-model',
+    fields: ['*'],
+    collection: 'products',
+    pageSize: 10,
+    currentPage: currentPage as number,
+    limit: undefined,
+    productID: undefined,
+    products: undefined,
+    visitorId: undefined,
+    loginId: undefined,
+    filters: undefined,
+    rawFilter: undefined,
+    placement: undefined,
+    eventType: undefined,
+    area: undefined,
+    debug: undefined,
+    strictFiltering: undefined,
+    hasRequested: false,
+  };
+}
 
 describe('recommendationsUiFunctions', () => {
   beforeEach(() => {
@@ -355,29 +436,18 @@ describe('recommendationsUiFunctions', () => {
   describe('error handling and edge cases', () => {
     it('should handle undefined output store state gracefully', () => {
       updateRecsInputStore((current) => ({ ...current, currentPage: 0 }));
-      updateRecsOutputStore(() => ({
-        products: [],
-        allProducts: [],
-        pagination: {
-          currentPage: 0,
-          pageSize: 10,
-          totalPages: undefined as any,
-          totalRecords: 30,
-        },
-        metadata: { modelName: 'test', totalCount: 30 },
-        loading: false,
-        error: null,
-        rawResponse: undefined,
+      updateRecsOutputStore(() => createTestOutputState({
+        totalPages: undefined,
+        totalRecords: 30,
       }));
 
       expect(() => nextPage()).not.toThrow();
     });
 
     it('should handle NaN values in pagination', () => {
-      updateRecsInputStore((current) => ({ ...current, currentPage: NaN as any }));
-      updateRecsOutputStore((current) => ({
-        ...current,
-        pagination: { ...current.pagination, totalPages: NaN as any }
+      updateRecsInputStore(() => createTestInputState(NaN));
+      updateRecsOutputStore(() => createTestOutputState({
+        totalPages: NaN,
       }));
 
       expect(() => nextPage()).not.toThrow();
