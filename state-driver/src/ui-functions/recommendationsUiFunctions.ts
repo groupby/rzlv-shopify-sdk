@@ -48,6 +48,11 @@ export function previousPage(): void {
 
 export function setRecsPageSize(size: number): void {
   updateRecsInputStore((current) => {
+    if (size <= 0) {
+      debugLog('UI:Recs', 'setRecsPageSize rejected invalid size', { size });
+      return current;
+    }
+
     const newState = {
       ...current,
       pageSize: size,

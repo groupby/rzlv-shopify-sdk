@@ -76,6 +76,11 @@ export function initRecsManager(config: RecsManagerConfig): void {
   // Store the configuration for use in every recommendations request.
   recsManagerConfig = config;
 
+  // Set our global debug flag
+  if (config.debug !== undefined) {
+    sdkConfig.debug = config.debug;
+  }
+
   // Wire up the sample operator so that changes to the recsInputStore can trigger recommendations.
   sample({
     source: recsInputStore,
