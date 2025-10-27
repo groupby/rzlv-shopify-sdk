@@ -71,7 +71,7 @@ export function resetRecs(): void {
       currentPage: 0,
       hasRequested: true
     };
-    debugLog('UI:Recs', 'resetRecs');
+    debugLog('UI:Recs', 'resetRecs', { prevPage: current.currentPage, newPage: 0 });
     return newState;
   });
 }
@@ -86,7 +86,11 @@ export function fetchRecommendations(): void {
       ...current,
       hasRequested: true
     };
-    debugLog('UI:Recs', 'fetchRecommendations');
+    debugLog(
+        'UI:Recs',
+        'fetchRecommendations',
+        {prevRequested: current.hasRequested, newRequested: true}
+    );
     return newState;
   });
 }

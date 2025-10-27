@@ -70,7 +70,6 @@ let searchManagerConfig: SearchManagerConfig;
  * @param config - The static configuration values.
  */
 export function initSearchManager(config: SearchManagerConfig): void {
-  sdkConfig.debug = config.debug;
   // Add a guard so this is only initialized once.
   if ((initSearchManager as any).initialized) {
     return;
