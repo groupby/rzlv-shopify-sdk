@@ -8,7 +8,7 @@ import type { AppEnv, SearchResult } from '../utils/searchUtils.types';
  */
 export interface RequestAutocompleteOptions {
   /**
-   * The search query string.  Should include the `autocomplete:` prefix.
+   * The search query string.
    */
   query: string;
   /**
@@ -40,7 +40,7 @@ export interface RequestAutocompleteOptions {
  *
  * @example
  * const results = await requestAutocomplete("shop123", AppEnv.Production, {
- *   query: "autocomplete:sh",
+ *   query: "sh",
  *   collection: "products",
  *   area: "navigation",
  * });

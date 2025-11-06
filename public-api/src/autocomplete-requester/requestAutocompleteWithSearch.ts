@@ -10,7 +10,7 @@ import type { ShopifyConfig } from '../search-requester/fetchStorefrontProducts'
  */
 export type RequestAutocompleteSearchOptions = {
   /**
-   * The search query string.  Should include the `autocomplete:` prefix.
+   * The search query string.
    */
   query: string;
   /**
@@ -56,7 +56,7 @@ export type RequestAutocompleteSearchOptions = {
  *
  * @example
  * const results = await requestAutocompleteWithSearch("shop123", AppEnv.Production, {
- *   query: "autocomplete:sh",
+ *   query: "sh",
  *   collection: "products",
  *   area: "navigation",
  *   searchOptions: {}
@@ -80,7 +80,7 @@ export async function requestAutocompleteWithSearch(
     });
 
     // Determine the search query to use
-    let searchQuery = options.query;
+    let searchQuery = modifiedQuery;
     
     // If useFirstSuggestion is enabled and there are autocomplete suggestions,
     // use the first suggestion as the search query
