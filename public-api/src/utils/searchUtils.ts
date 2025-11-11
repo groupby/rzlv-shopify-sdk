@@ -304,6 +304,11 @@ export function reorderVariantsByRelevancy(shopifyProducts: ProductDetail[], sit
     return {
       ...product,
       ...siteSearchProduct,
+      // Preserve critical Shopify fields that the front-end depends on
+      // These must not be overwritten by siteSearchProduct (CCAPI data)
+      featured_image: product.featured_image,
+      media: product.media,
+      images: product.images,
       variants: [...reorderedVariants, ...remainingVariants],
     };
   });
