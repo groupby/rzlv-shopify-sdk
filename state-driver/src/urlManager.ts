@@ -7,7 +7,9 @@ import {
   calculateHasSubmitted, 
   shouldUpdateBrowserUrl, 
   getUrlPathForSource,
-  serializeSearchParamsToUrl 
+  serializeSearchParamsToUrl,
+  parseUrlToSearchParams,
+  createPopstateHandler
 } from './utils/urlManagerUtils';
 import { DEFAULT_SORT_BY, SEARCH_PATH, DEFAULT_TYPE } from './constants/searchConstants';
 
@@ -33,39 +35,6 @@ interface InitUrlManagerParams {
    * Optional debug flag to enable or disable debug logging.
    */
   debug?: boolean;
-}
-
-/**
- * Parses the current URL parameters and returns a SearchParams object (without paginationType).
- *
- * This function reads URL parameters such as 'gbi-query', 'pagesize', 'page', 'sort_by',
- * 'refinement', and 'type', and maps them to the SearchParams structure.
- * 
- * Note: paginationType is not stored in the URL and must be provided separately.
- *
- * @param config - An object containing defaultPagesize and source.
- * @returns The parsed search parameters (excluding paginationType which must be added by caller).
- */
-function parseUrlToSearchParams({ defaultPagesize, source }: Pick<InitUrlManagerParams, 'defaultPagesize' | 'source'>): Omit<SearchParams, 'paginationType'> {
-  const urlParams = new URLSearchParams(window.location.search);
-
-  const gbi_query = urlParams.get('gbi-query') || '';
-  const pagesize = urlParams.get('pagesize') || defaultPagesize;
-  const page = urlParams.has('page') ? parseInt(urlParams.get('page')!, 10) : 1;
-  const sort_by = urlParams.get('sort_by') || DEFAULT_SORT_BY;
-  const type = urlParams.get('type') || DEFAULT_TYPE;
-  const refinementParam = urlParams.get('refinement');
-  const refinements = refinementParam ? refinementParam.split(',') : [];
-
-  return {
-    gbi_query,
-    pagesize,
-    refinements,
-    page,
-    sort_by,
-    type,
-    source, // Use the provided source.
-  };
 }
 
 /**
@@ -112,7 +81,8 @@ export function initUrlManager({
   };
 
   // Flag to prevent infinite loop: popstate → store update → pushState → popstate
-  let isHandlingPopstate = false;
+  // Using an object so it can be mutated by reference in the popstate handler
+  const isHandlingPopstateRef = { value: false };
 
   // Parse URL parameters and update the Input Store.
   const initialParams = parseUrlToSearchParams({ defaultPagesize, source });
@@ -152,11 +122,11 @@ export function initUrlManager({
     debugLog('URL Manager', 'URL watcher triggered with params:', params);
     
     // Determine if we should update the browser URL
-    const shouldUpdate = shouldUpdateBrowserUrl(params, isHandlingPopstate);
+    const shouldUpdate = shouldUpdateBrowserUrl(params, isHandlingPopstateRef.value);
     
     debugLog('URL Manager', 'URL update decision:', {
       shouldUpdate,
-      isHandlingPopstate,
+      isHandlingPopstate: isHandlingPopstateRef.value,
       source: params.source,
       hasSubmitted: params.hasSubmitted
     });
@@ -176,60 +146,17 @@ export function initUrlManager({
     }
   });
 
-  /**
-   * Handle browser back/forward navigation (popstate events)
-   * 
-   * This is critical for syncing the UI when users click back/forward buttons.
-   * Without this handler, the URL updates but the search state remains stale.
-   * 
-   * Key behaviors:
-   * - Re-parses URL parameters and updates the input store
-   * - Preserves collectionId and paginationType (not stored in URL)
-   * - Sets hasSubmitted to ensure SearchManager filter passes
-   * - Prevents infinite loops via isHandlingPopstate flag
-   */
-  window.addEventListener('popstate', () => {
-    debugLog('URL Manager', 'popstate event detected - browser back/forward navigation');
-    
-    // Set flag to prevent the store.watch() from pushing state back to URL
-    isHandlingPopstate = true;
-    
-    try {
-      // Re-parse URL parameters to get the new state
-      const newParams = parseUrlToSearchParams({ defaultPagesize, source });
-      
-      debugLog('URL Manager', 'Parsed URL params from popstate:', newParams);
-      debugLog('URL Manager', 'Current cached params:', cachedSearchParams);
-      
-      // Update the input store with new URL parameters
-      // Preserve values that aren't in the URL (collectionId, paginationType)
-      updateInputStore((current: SearchParams): SearchParams => {
-        const updatedParams = {
-          ...current,
-          ...newParams,
-          // Preserve collectionId - it's set during init and shouldn't change via URL navigation
-          // This is critical for collection pages to maintain their context
-          collectionId: cachedSearchParams.collectionId,
-          // Preserve paginationType - it's a UI configuration, not a URL parameter
-          paginationType: cachedSearchParams.paginationType,
-          // Calculate hasSubmitted to ensure SearchManager filter passes
-          // We need this because the user navigated to a valid search state
-          hasSubmitted: calculateHasSubmitted(newParams, cachedSearchParams.collectionId),
-        };
-        
-        debugLog('URL Manager', 'Updating store with popstate params:', updatedParams);
-        return updatedParams;
-      });
-      
-    } finally {
-      // Clear the flag after a microtask to ensure store.watch() has completed
-      // Using setTimeout with 0 ensures this runs after the current call stack
-      setTimeout(() => {
-        isHandlingPopstate = false;
-        debugLog('URL Manager', 'popstate handling complete');
-      }, 0);
-    }
+  // Create and attach popstate event handler for browser back/forward navigation
+  const popstateHandler = createPopstateHandler({
+    defaultPagesize,
+    source,
+    cachedSearchParams,
+    isHandlingPopstate: isHandlingPopstateRef,
+    updateInputStore,
+    debugLog,
   });
+  
+  window.addEventListener('popstate', popstateHandler);
 
   // Set the initialized flag to prevent duplicate initialization.
   initUrlManager.initialized = true;
