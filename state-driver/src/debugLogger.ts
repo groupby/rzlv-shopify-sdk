@@ -18,7 +18,7 @@ export let sdkConfig: SDKConfig = {
 export function debugLog(moduleName: string, message: string, ...args: any[]): void {
   if (!sdkConfig.debug) return;
   console.log(
-    `%c[State Driver SDK - ${moduleName}]: ${message}`,
+    `%c[State Driver SDK DRD0 - ${moduleName}]: ${message}`,
     'color: green; font-weight: bold; font-size: 13px;',
     ...args
   );

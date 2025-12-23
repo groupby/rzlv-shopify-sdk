@@ -28,15 +28,17 @@ interface InitUrlManagerParams {
 }
 
 /**
- * Parses the current URL parameters and returns a SearchParams object.
+ * Parses the current URL parameters and returns a SearchParams object (without paginationType).
  *
  * This function reads URL parameters such as 'gbi-query', 'pagesize', 'page', 'sort_by',
  * 'refinement', and 'type', and maps them to the SearchParams structure.
+ * 
+ * Note: paginationType is not stored in the URL and must be provided separately.
  *
  * @param config - An object containing defaultPagesize and source.
- * @returns The parsed search parameters.
+ * @returns The parsed search parameters (excluding paginationType which must be added by caller).
  */
-function parseUrlToSearchParams({ defaultPagesize, source }: InitUrlManagerParams): SearchParams {
+function parseUrlToSearchParams({ defaultPagesize, source }: Pick<InitUrlManagerParams, 'defaultPagesize' | 'source'>): Omit<SearchParams, 'paginationType'> {
   const urlParams = new URLSearchParams(window.location.search);
 
   const gbi_query = urlParams.get('gbi-query') || '';
@@ -87,12 +89,30 @@ export function initUrlManager({
   sdkConfig.debug = debug;
   debugLog('URL Manager', 'Initializing URL Manager');
 
+  // Cache to track current state for popstate handler
+  // We need this because Effector stores don't expose a public getState() method
+  let cachedSearchParams: SearchParams = {
+    gbi_query: '',
+    pagesize: defaultPagesize,
+    refinements: [],
+    page: 1,
+    sort_by: 'relevance',
+    type: 'product',
+    source,
+    collectionId,
+    paginationType,
+  };
+
+  // Flag to prevent infinite loop: popstate → store update → pushState → popstate
+  let isHandlingPopstate = false;
+
   // Parse URL parameters and update the Input Store.
   const initialParams = parseUrlToSearchParams({ defaultPagesize, source });
-  if (collectionId) {
-    initialParams.collectionId = collectionId;
-  }
-  initialParams.paginationType = paginationType;
+  const completeInitialParams: SearchParams = {
+    ...initialParams,
+    paginationType,
+    collectionId,
+  };
 
   // Check if there are actual URL parameters that need to be applied
   const hasUrlSearchParams = 
@@ -109,20 +129,29 @@ export function initUrlManager({
     // Set hasSubmitted to true only if the URL indicates an actual search action.
     updateInputStore((current: SearchParams): SearchParams => ({
       ...current,
-      ...initialParams,
+      ...completeInitialParams,
       hasSubmitted:
         initialParams.gbi_query.trim() !== '' ||
         initialParams.refinements.length > 0 ||
         initialParams.page > 1,
     }));
-    debugLog('URL Manager', 'Input store updated with URL parameters', initialParams);
+    debugLog('URL Manager', 'Input store updated with URL parameters', completeInitialParams);
   } else {
     debugLog('URL Manager', 'No URL parameters to parse, skipping state update');
   }
 
   // Subscribe to changes in the Input Store and update the URL accordingly.
   searchInputStore.watch((params) => {
+    // Update cached state for popstate handler
+    cachedSearchParams = params;
     debugLog('URL Manager', 'URL watcher triggered with params:', params);
+    
+    // Skip URL update if we're currently handling a popstate event
+    // This prevents infinite loop: popstate → store update → pushState → popstate
+    if (isHandlingPopstate) {
+      debugLog('URL Manager', 'Skipping URL update during popstate handling');
+      return;
+    }
     
     // Only update the URL if at least one search parameter indicates a search action.
     // For collection pages, always update URL to maintain state synchronization
@@ -170,6 +199,66 @@ export function initUrlManager({
       debugLog('URL Manager', 'Browser URL updated to', newPath, urlParams.toString());
       // Optionally dispatch a custom event signaling the URL update.
       document.dispatchEvent(new CustomEvent('searchParamsUpdated', { detail: params }));
+    }
+  });
+
+  /**
+   * Handle browser back/forward navigation (popstate events)
+   * 
+   * This is critical for syncing the UI when users click back/forward buttons.
+   * Without this handler, the URL updates but the search state remains stale.
+   * 
+   * Key behaviors:
+   * - Re-parses URL parameters and updates the input store
+   * - Preserves collectionId and paginationType (not stored in URL)
+   * - Sets hasSubmitted to ensure SearchManager filter passes
+   * - Prevents infinite loops via isHandlingPopstate flag
+   */
+  window.addEventListener('popstate', () => {
+    debugLog('URL Manager', 'popstate event detected - browser back/forward navigation');
+    
+    // Set flag to prevent the store.watch() from pushing state back to URL
+    isHandlingPopstate = true;
+    
+    try {
+      // Re-parse URL parameters to get the new state
+      const newParams = parseUrlToSearchParams({ defaultPagesize, source });
+      
+      debugLog('URL Manager', 'Parsed URL params from popstate:', newParams);
+      debugLog('URL Manager', 'Current cached params:', cachedSearchParams);
+      
+      // Update the input store with new URL parameters
+      // Preserve values that aren't in the URL (collectionId, paginationType)
+      updateInputStore((current: SearchParams): SearchParams => {
+        const updatedParams = {
+          ...current,
+          ...newParams,
+          // Preserve collectionId - it's set during init and shouldn't change via URL navigation
+          // This is critical for collection pages to maintain their context
+          collectionId: cachedSearchParams.collectionId,
+          // Preserve paginationType - it's a UI configuration, not a URL parameter
+          paginationType: cachedSearchParams.paginationType,
+          // Calculate hasSubmitted to ensure SearchManager filter passes
+          // We need this because the user navigated to a valid search state
+          hasSubmitted:
+            newParams.gbi_query.trim() !== '' ||
+            newParams.refinements.length > 0 ||
+            newParams.page > 1 ||
+            // Collection pages should always trigger search on navigation
+            (cachedSearchParams.collectionId !== undefined),
+        };
+        
+        debugLog('URL Manager', 'Updating store with popstate params:', updatedParams);
+        return updatedParams;
+      });
+      
+    } finally {
+      // Clear the flag after a microtask to ensure store.watch() has completed
+      // Using setTimeout with 0 ensures this runs after the current call stack
+      setTimeout(() => {
+        isHandlingPopstate = false;
+        debugLog('URL Manager', 'popstate handling complete');
+      }, 0);
     }
   });
 
