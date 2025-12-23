@@ -2,7 +2,7 @@ import { updateInputStore, searchInputStore } from './searchInputStore';
 import { SearchSource, PaginationType } from './types';
 import type { SearchParams } from './types';
 import { sdkConfig, debugLog } from './debugLogger';
-import { isCollectionSource, calculateHasSubmitted } from './utils/urlManagerUtils';
+import { isCollectionSource, calculateHasSubmitted, shouldUpdateBrowserUrl } from './utils/urlManagerUtils';
 import { DEFAULT_SORT_BY, SEARCH_PATH, DEFAULT_TYPE } from './constants/searchConstants';
 
 interface InitUrlManagerParams {
@@ -145,38 +145,17 @@ export function initUrlManager({
     cachedSearchParams = params;
     debugLog('URL Manager', 'URL watcher triggered with params:', params);
     
-    // Skip URL update if we're currently handling a popstate event
-    // This prevents infinite loop: popstate → store update → pushState → popstate
-    if (isHandlingPopstate) {
-      debugLog('URL Manager', 'Skipping URL update during popstate handling');
-      return;
-    }
-    
-    // Only update the URL if at least one search parameter indicates a search action.
-    // For collection pages, always update URL to maintain state synchronization
-    // For non-collection pages, update URL when there's search activity or hasSubmitted
-    const hasSearchActivity = 
-      params.gbi_query.trim() !== '' ||
-      params.refinements.length > 0 ||
-      params.page > 1;
-      
-    const isCollectionPage = isCollectionSource(params.source);
-    const shouldUpdateUrlForNonCollection = !isCollectionPage && params.hasSubmitted === true;
-    
-    // For collection pages, always update URL to keep it in sync with state
-    // For non-collection pages, update URL based on hasSubmitted or search activity
-    const shouldUpdateUrl = isCollectionPage || hasSearchActivity || shouldUpdateUrlForNonCollection;
+    // Determine if we should update the browser URL
+    const shouldUpdate = shouldUpdateBrowserUrl(params, isHandlingPopstate);
     
     debugLog('URL Manager', 'URL update decision:', {
-      hasSearchActivity,
-      isCollectionPage,
-      shouldUpdateUrlForNonCollection,
-      shouldUpdateUrl,
+      shouldUpdate,
+      isHandlingPopstate,
       source: params.source,
       hasSubmitted: params.hasSubmitted
     });
 
-    if (shouldUpdateUrl) {
+    if (shouldUpdate) {
       const urlParams = new URLSearchParams();
 
       // Map our search state to URL parameters.

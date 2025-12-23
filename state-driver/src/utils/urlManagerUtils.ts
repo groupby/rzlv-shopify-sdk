@@ -43,3 +43,42 @@ export function calculateHasSubmitted(
     collectionId !== undefined
   );
 }
+
+/**
+ * Determines whether the browser URL should be updated based on search parameters.
+ * 
+ * URL should be updated when:
+ * - We're on a collection page (always keep URL in sync with state)
+ * - There's search activity (query, refinements, or pagination)
+ * - On non-collection pages when hasSubmitted is true (explicit search action)
+ * 
+ * This prevents unnecessary URL updates for default/empty states while ensuring
+ * all meaningful search states are reflected in the URL for bookmarking and sharing.
+ *
+ * @param params - Search parameters to evaluate
+ * @param isHandlingPopstate - Whether we're currently handling a popstate event (prevents infinite loops)
+ * @returns true if the browser URL should be updated, false otherwise
+ */
+export function shouldUpdateBrowserUrl(
+  params: Pick<SearchParams, 'gbi_query' | 'refinements' | 'page' | 'source' | 'hasSubmitted'>,
+  isHandlingPopstate: boolean
+): boolean {
+  // Skip URL update if we're currently handling a popstate event
+  // This prevents infinite loop: popstate → store update → pushState → popstate
+  if (isHandlingPopstate) {
+    return false;
+  }
+
+  // Check if there's any search activity
+  const hasSearchActivity = 
+    params.gbi_query.trim() !== '' ||
+    params.refinements.length > 0 ||
+    params.page > 1;
+    
+  const isCollectionPage = isCollectionSource(params.source);
+  const shouldUpdateUrlForNonCollection = !isCollectionPage && params.hasSubmitted === true;
+  
+  // For collection pages, always update URL to keep it in sync with state
+  // For non-collection pages, update URL based on hasSubmitted or search activity
+  return isCollectionPage || hasSearchActivity || shouldUpdateUrlForNonCollection;
+}
