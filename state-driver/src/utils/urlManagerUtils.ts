@@ -4,7 +4,7 @@
 
 import { SearchSource } from '../types';
 import type { SearchParams } from '../types';
-import { COLLECTION_SOURCE_LOWERCASE } from '../constants/searchConstants';
+import { COLLECTION_SOURCE_LOWERCASE, SEARCH_PATH } from '../constants/searchConstants';
 
 /**
  * Checks if the given source represents a collection search.
@@ -81,4 +81,23 @@ export function shouldUpdateBrowserUrl(
   // For collection pages, always update URL to keep it in sync with state
   // For non-collection pages, update URL based on hasSubmitted or search activity
   return isCollectionPage || hasSearchActivity || shouldUpdateUrlForNonCollection;
+}
+
+/**
+ * Determines the URL path based on the search source.
+ * 
+ * - For collection pages: Preserves the current collection URL path (e.g., /collections/shirts)
+ * - For search pages: Uses the standard search path (e.g., /search)
+ * 
+ * This ensures that collection searches maintain their collection context in the URL,
+ * while regular searches use the search page path.
+ *
+ * @param source - The search source (SEARCH, COLLECTION, etc.)
+ * @returns The URL path to use for the search
+ */
+export function getUrlPathForSource(source: SearchSource | string): string {
+  if (isCollectionSource(source)) {
+    return window.location.pathname;
+  }
+  return SEARCH_PATH;
 }

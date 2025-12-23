@@ -2,7 +2,7 @@ import { updateInputStore, searchInputStore } from './searchInputStore';
 import { SearchSource, PaginationType } from './types';
 import type { SearchParams } from './types';
 import { sdkConfig, debugLog } from './debugLogger';
-import { isCollectionSource, calculateHasSubmitted, shouldUpdateBrowserUrl } from './utils/urlManagerUtils';
+import { isCollectionSource, calculateHasSubmitted, shouldUpdateBrowserUrl, getUrlPathForSource } from './utils/urlManagerUtils';
 import { DEFAULT_SORT_BY, SEARCH_PATH, DEFAULT_TYPE } from './constants/searchConstants';
 
 interface InitUrlManagerParams {
@@ -166,11 +166,8 @@ export function initUrlManager({
       urlParams.set('gbi-query', params.gbi_query);
       urlParams.set('pagesize', params.pagesize);
 
-      // Determine the new path based on the source.
-      let newPath = SEARCH_PATH;
-      if (isCollectionSource(params.source)) {
-        newPath = window.location.pathname;
-      }
+      // Determine the new path based on the source
+      const newPath = getUrlPathForSource(params.source);
 
       // Update the URL without reloading the page.
       window.history.pushState({}, '', `${newPath}?${urlParams.toString()}`);
