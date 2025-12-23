@@ -2,17 +2,8 @@ import { updateInputStore, searchInputStore } from './searchInputStore';
 import { SearchSource, PaginationType } from './types';
 import type { SearchParams } from './types';
 import { sdkConfig, debugLog } from './debugLogger';
-
-/**
- * Checks if the source represents a collection page.
- * Handles both enum and string values for backwards compatibility.
- * 
- * @param source - The search source to check
- * @returns True if the source is a collection page
- */
-function isCollectionSource(source: SearchSource | string): boolean {
-  return source === SearchSource.COLLECTION || (source as string) === 'collection';
-}
+import { isCollectionSource } from './utils/urlManagerUtils';
+import { DEFAULT_SORT_BY, SEARCH_PATH, DEFAULT_TYPE } from './constants/searchConstants';
 
 interface InitUrlManagerParams {
   /**
@@ -55,8 +46,8 @@ function parseUrlToSearchParams({ defaultPagesize, source }: Pick<InitUrlManager
   const gbi_query = urlParams.get('gbi-query') || '';
   const pagesize = urlParams.get('pagesize') || defaultPagesize;
   const page = urlParams.has('page') ? parseInt(urlParams.get('page')!, 10) : 1;
-  const sort_by = urlParams.get('sort_by') || 'relevance';
-  const type = urlParams.get('type') || 'product';
+  const sort_by = urlParams.get('sort_by') || DEFAULT_SORT_BY;
+  const type = urlParams.get('type') || DEFAULT_TYPE;
   const refinementParam = urlParams.get('refinement');
   const refinements = refinementParam ? refinementParam.split(',') : [];
 
@@ -107,8 +98,8 @@ export function initUrlManager({
     pagesize: defaultPagesize,
     refinements: [],
     page: 1,
-    sort_by: 'relevance',
-    type: 'product',
+    sort_by: DEFAULT_SORT_BY,
+    type: DEFAULT_TYPE,
     source,
     collectionId,
     paginationType,
@@ -130,7 +121,7 @@ export function initUrlManager({
     initialParams.gbi_query.trim() !== '' ||
     initialParams.refinements.length > 0 ||
     initialParams.page > 1 ||
-    initialParams.sort_by !== 'relevance' ||
+    initialParams.sort_by !== DEFAULT_SORT_BY ||
     initialParams.pagesize !== defaultPagesize;
 
   // Only update Input Store if there are URL parameters to parse
@@ -200,7 +191,7 @@ export function initUrlManager({
       urlParams.set('pagesize', params.pagesize);
 
       // Determine the new path based on the source.
-      let newPath = '/search';
+      let newPath = SEARCH_PATH;
       if (isCollectionSource(params.source)) {
         newPath = window.location.pathname;
       }
