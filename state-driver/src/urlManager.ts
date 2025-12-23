@@ -2,7 +2,7 @@ import { updateInputStore, searchInputStore } from './searchInputStore';
 import { SearchSource, PaginationType } from './types';
 import type { SearchParams } from './types';
 import { sdkConfig, debugLog } from './debugLogger';
-import { isCollectionSource } from './utils/urlManagerUtils';
+import { isCollectionSource, calculateHasSubmitted } from './utils/urlManagerUtils';
 import { DEFAULT_SORT_BY, SEARCH_PATH, DEFAULT_TYPE } from './constants/searchConstants';
 
 interface InitUrlManagerParams {
@@ -132,10 +132,7 @@ export function initUrlManager({
     updateInputStore((current: SearchParams): SearchParams => ({
       ...current,
       ...completeInitialParams,
-      hasSubmitted:
-        initialParams.gbi_query.trim() !== '' ||
-        initialParams.refinements.length > 0 ||
-        initialParams.page > 1,
+      hasSubmitted: calculateHasSubmitted(initialParams, collectionId),
     }));
     debugLog('URL Manager', 'Input store updated with URL parameters', completeInitialParams);
   } else {
@@ -242,12 +239,7 @@ export function initUrlManager({
           paginationType: cachedSearchParams.paginationType,
           // Calculate hasSubmitted to ensure SearchManager filter passes
           // We need this because the user navigated to a valid search state
-          hasSubmitted:
-            newParams.gbi_query.trim() !== '' ||
-            newParams.refinements.length > 0 ||
-            newParams.page > 1 ||
-            // Collection pages should always trigger search on navigation
-            (cachedSearchParams.collectionId !== undefined),
+          hasSubmitted: calculateHasSubmitted(newParams, cachedSearchParams.collectionId),
         };
         
         debugLog('URL Manager', 'Updating store with popstate params:', updatedParams);
