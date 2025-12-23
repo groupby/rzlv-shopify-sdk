@@ -3,6 +3,17 @@ import { SearchSource, PaginationType } from './types';
 import type { SearchParams } from './types';
 import { sdkConfig, debugLog } from './debugLogger';
 
+/**
+ * Checks if the source represents a collection page.
+ * Handles both enum and string values for backwards compatibility.
+ * 
+ * @param source - The search source to check
+ * @returns True if the source is a collection page
+ */
+function isCollectionSource(source: SearchSource | string): boolean {
+  return source === SearchSource.COLLECTION || (source as string) === 'collection';
+}
+
 interface InitUrlManagerParams {
   /**
    * The default page size to use if not provided in the URL.
@@ -161,7 +172,7 @@ export function initUrlManager({
       params.refinements.length > 0 ||
       params.page > 1;
       
-    const isCollectionPage = params.source === SearchSource.COLLECTION || (params.source as string) === 'collection';
+    const isCollectionPage = isCollectionSource(params.source);
     const shouldUpdateUrlForNonCollection = !isCollectionPage && params.hasSubmitted === true;
     
     // For collection pages, always update URL to keep it in sync with state
@@ -190,7 +201,7 @@ export function initUrlManager({
 
       // Determine the new path based on the source.
       let newPath = '/search';
-      if (params.source === SearchSource.COLLECTION || (params.source as string) === 'collection') {
+      if (isCollectionSource(params.source)) {
         newPath = window.location.pathname;
       }
 
