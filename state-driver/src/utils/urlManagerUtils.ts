@@ -101,3 +101,28 @@ export function getUrlPathForSource(source: SearchSource | string): string {
   }
   return SEARCH_PATH;
 }
+
+/**
+ * Serializes search parameters into URL query parameters.
+ * 
+ * Maps SearchParams object to URLSearchParams for use in the browser URL.
+ * Note: This does NOT include collectionId or paginationType as those are not
+ * stored in the URL (they're internal state).
+ *
+ * @param params - The search parameters to serialize
+ * @returns URLSearchParams object ready to be appended to a URL
+ */
+export function serializeSearchParamsToUrl(
+  params: Pick<SearchParams, 'type' | 'refinements' | 'sort_by' | 'page' | 'gbi_query' | 'pagesize'>
+): URLSearchParams {
+  const urlParams = new URLSearchParams();
+  
+  urlParams.set('type', params.type);
+  urlParams.set('refinement', params.refinements.join(','));
+  urlParams.set('sort_by', params.sort_by);
+  urlParams.set('page', params.page.toString());
+  urlParams.set('gbi-query', params.gbi_query);
+  urlParams.set('pagesize', params.pagesize);
+  
+  return urlParams;
+}

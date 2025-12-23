@@ -2,7 +2,13 @@ import { updateInputStore, searchInputStore } from './searchInputStore';
 import { SearchSource, PaginationType } from './types';
 import type { SearchParams } from './types';
 import { sdkConfig, debugLog } from './debugLogger';
-import { isCollectionSource, calculateHasSubmitted, shouldUpdateBrowserUrl, getUrlPathForSource } from './utils/urlManagerUtils';
+import { 
+  isCollectionSource, 
+  calculateHasSubmitted, 
+  shouldUpdateBrowserUrl, 
+  getUrlPathForSource,
+  serializeSearchParamsToUrl 
+} from './utils/urlManagerUtils';
 import { DEFAULT_SORT_BY, SEARCH_PATH, DEFAULT_TYPE } from './constants/searchConstants';
 
 interface InitUrlManagerParams {
@@ -156,15 +162,8 @@ export function initUrlManager({
     });
 
     if (shouldUpdate) {
-      const urlParams = new URLSearchParams();
-
-      // Map our search state to URL parameters.
-      urlParams.set('type', params.type);
-      urlParams.set('refinement', params.refinements.join(','));
-      urlParams.set('sort_by', params.sort_by);
-      urlParams.set('page', params.page.toString());
-      urlParams.set('gbi-query', params.gbi_query);
-      urlParams.set('pagesize', params.pagesize);
+      // Serialize search parameters to URL query string
+      const urlParams = serializeSearchParamsToUrl(params);
 
       // Determine the new path based on the source
       const newPath = getUrlPathForSource(params.source);
