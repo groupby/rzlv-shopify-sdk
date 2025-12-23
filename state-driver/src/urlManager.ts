@@ -52,6 +52,7 @@ interface InitUrlManagerParams {
  * The `initialized` flag prevents duplicate initialization.
  *
  * @param config - The initialization configuration including defaultPagesize and source.
+ * @returns Cleanup function to remove event listeners and reset initialization state
  */
 export function initUrlManager({ 
   defaultPagesize, 
@@ -59,9 +60,12 @@ export function initUrlManager({
   collectionId,
   paginationType,
   debug = false,
-}: InitUrlManagerParams): void {
+}: InitUrlManagerParams): () => void {
   // Prevent duplicate initialization.
-  if (initUrlManager.initialized) return;
+  if (initUrlManager.initialized) {
+    // Return no-op cleanup function if already initialized
+    return () => {};
+  }
   // Set our global debug flag
   sdkConfig.debug = debug;
   debugLog('URL Manager', 'Initializing URL Manager');
@@ -161,6 +165,13 @@ export function initUrlManager({
   // Set the initialized flag to prevent duplicate initialization.
   initUrlManager.initialized = true;
   debugLog('URL Manager', 'Initialization complete');
+
+  // Return cleanup function for proper teardown
+  return () => {
+    window.removeEventListener('popstate', popstateHandler);
+    initUrlManager.initialized = false;
+    debugLog('URL Manager', 'URL Manager cleaned up');
+  };
 }
 
 // Initialize the flag.
