@@ -64,6 +64,7 @@ export function initUrlManager({
   // Prevent duplicate initialization.
   if (initUrlManager.initialized) {
     // Return no-op cleanup function if already initialized
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     return () => {};
   }
   // Set our global debug flag
