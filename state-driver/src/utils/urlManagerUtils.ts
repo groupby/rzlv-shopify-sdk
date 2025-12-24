@@ -14,7 +14,7 @@ import { COLLECTION_SOURCE_LOWERCASE, SEARCH_PATH, DEFAULT_SORT_BY, DEFAULT_TYPE
  * @returns true if the source is a collection, false otherwise
  */
 export function isCollectionSource(source: SearchSource | string): boolean {
-  return source === SearchSource.COLLECTION || (source as string) === COLLECTION_SOURCE_LOWERCASE;
+  return source === SearchSource.COLLECTION || source === COLLECTION_SOURCE_LOWERCASE;
 }
 
 /**
@@ -148,11 +148,12 @@ export function parseUrlToSearchParams(config: {
 }): Omit<SearchParams, 'paginationType'> {
   const urlParams = new URLSearchParams(window.location.search);
 
-  const gbi_query = urlParams.get('gbi-query') || '';
+  const gbi_query = urlParams.get('gbi-query') ?? '';
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const pagesize = urlParams.get('pagesize') || config.defaultPagesize;
-  const page = urlParams.has('page') ? parseInt(urlParams.get('page')!, 10) : 1;
-  const sort_by = urlParams.get('sort_by') || DEFAULT_SORT_BY;
-  const type = urlParams.get('type') || DEFAULT_TYPE;
+  const page = urlParams.has('page') ? parseInt(urlParams.get('page') ?? '1', 10) : 1;
+  const sort_by = urlParams.get('sort_by') ?? DEFAULT_SORT_BY;
+  const type = urlParams.get('type') ?? DEFAULT_TYPE;
   const refinementParam = urlParams.get('refinement');
   const refinements = refinementParam ? refinementParam.split(',') : [];
 
@@ -195,7 +196,7 @@ export function createPopstateHandler(config: {
   cachedSearchParams: SearchParams;
   isHandlingPopstate: { value: boolean };
   updateInputStore: (updater: (current: SearchParams) => SearchParams) => void;
-  debugLog: (context: string, ...args: any[]) => void;
+  debugLog: (context: string, ...args: unknown[]) => void;
 }): () => void {
   const { defaultPagesize, source, cachedSearchParams, isHandlingPopstate, updateInputStore, debugLog } = config;
   
