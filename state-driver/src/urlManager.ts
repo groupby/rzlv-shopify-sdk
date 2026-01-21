@@ -2,6 +2,16 @@ import { updateInputStore, searchInputStore } from './searchInputStore';
 import { SearchSource, PaginationType } from './types';
 import type { SearchParams } from './types';
 import { sdkConfig, debugLog } from './debugLogger';
+import { 
+  isCollectionSource, 
+  calculateHasSubmitted, 
+  shouldUpdateBrowserUrl, 
+  getUrlPathForSource,
+  serializeSearchParamsToUrl,
+  parseUrlToSearchParams,
+  createPopstateHandler
+} from './utils/urlManagerUtils';
+import { DEFAULT_SORT_BY, SEARCH_PATH, DEFAULT_TYPE } from './constants/searchConstants';
 
 interface InitUrlManagerParams {
   /**
@@ -28,37 +38,6 @@ interface InitUrlManagerParams {
 }
 
 /**
- * Parses the current URL parameters and returns a SearchParams object.
- *
- * This function reads URL parameters such as 'gbi-query', 'pagesize', 'page', 'sort_by',
- * 'refinement', and 'type', and maps them to the SearchParams structure.
- *
- * @param config - An object containing defaultPagesize and source.
- * @returns The parsed search parameters.
- */
-function parseUrlToSearchParams({ defaultPagesize, source }: InitUrlManagerParams): SearchParams {
-  const urlParams = new URLSearchParams(window.location.search);
-
-  const gbi_query = urlParams.get('gbi-query') || '';
-  const pagesize = urlParams.get('pagesize') || defaultPagesize;
-  const page = urlParams.has('page') ? parseInt(urlParams.get('page')!, 10) : 1;
-  const sort_by = urlParams.get('sort_by') || 'relevance';
-  const type = urlParams.get('type') || 'product';
-  const refinementParam = urlParams.get('refinement');
-  const refinements = refinementParam ? refinementParam.split(',') : [];
-
-  return {
-    gbi_query,
-    pagesize,
-    refinements,
-    page,
-    sort_by,
-    type,
-    source, // Use the provided source.
-  };
-}
-
-/**
  * Initializes the URL Manager.
  *
  * On initialization, this function:
@@ -73,6 +52,7 @@ function parseUrlToSearchParams({ defaultPagesize, source }: InitUrlManagerParam
  * The `initialized` flag prevents duplicate initialization.
  *
  * @param config - The initialization configuration including defaultPagesize and source.
+ * @returns Cleanup function to remove event listeners and reset initialization state
  */
 export function initUrlManager({ 
   defaultPagesize, 
@@ -80,26 +60,52 @@ export function initUrlManager({
   collectionId,
   paginationType,
   debug = false,
-}: InitUrlManagerParams): void {
+}: InitUrlManagerParams): () => void {
   // Prevent duplicate initialization.
-  if (initUrlManager.initialized) return;
+  if (initUrlManager.initialized) {
+    // Return no-op cleanup function if already initialized
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    return () => {};
+  }
   // Set our global debug flag
   sdkConfig.debug = debug;
   debugLog('URL Manager', 'Initializing URL Manager');
 
+  // Cache to track current state for popstate handler
+  // We need this because Effector stores don't expose a public getState() method
+  // Using ref pattern to ensure popstate handler always reads the latest value
+  const cachedSearchParamsRef = { 
+    current: {
+      gbi_query: '',
+      pagesize: defaultPagesize,
+      refinements: [],
+      page: 1,
+      sort_by: DEFAULT_SORT_BY,
+      type: DEFAULT_TYPE,
+      source,
+      collectionId,
+      paginationType,
+    }
+  };
+
+  // Flag to prevent infinite loop: popstate → store update → pushState → popstate
+  // Using an object so it can be mutated by reference in the popstate handler
+  const isHandlingPopstateRef = { value: false };
+
   // Parse URL parameters and update the Input Store.
   const initialParams = parseUrlToSearchParams({ defaultPagesize, source });
-  if (collectionId) {
-    initialParams.collectionId = collectionId;
-  }
-  initialParams.paginationType = paginationType;
+  const completeInitialParams: SearchParams = {
+    ...initialParams,
+    paginationType,
+    collectionId,
+  };
 
   // Check if there are actual URL parameters that need to be applied
   const hasUrlSearchParams = 
     initialParams.gbi_query.trim() !== '' ||
     initialParams.refinements.length > 0 ||
     initialParams.page > 1 ||
-    initialParams.sort_by !== 'relevance' ||
+    initialParams.sort_by !== DEFAULT_SORT_BY ||
     initialParams.pagesize !== defaultPagesize;
 
   // Only update Input Store if there are URL parameters to parse
@@ -109,61 +115,36 @@ export function initUrlManager({
     // Set hasSubmitted to true only if the URL indicates an actual search action.
     updateInputStore((current: SearchParams): SearchParams => ({
       ...current,
-      ...initialParams,
-      hasSubmitted:
-        initialParams.gbi_query.trim() !== '' ||
-        initialParams.refinements.length > 0 ||
-        initialParams.page > 1,
+      ...completeInitialParams,
+      hasSubmitted: calculateHasSubmitted(initialParams, collectionId),
     }));
-    debugLog('URL Manager', 'Input store updated with URL parameters', initialParams);
+    debugLog('URL Manager', 'Input store updated with URL parameters', completeInitialParams);
   } else {
     debugLog('URL Manager', 'No URL parameters to parse, skipping state update');
   }
 
   // Subscribe to changes in the Input Store and update the URL accordingly.
   searchInputStore.watch((params) => {
+    // Update cached state for popstate handler
+    cachedSearchParamsRef.current = params;
     debugLog('URL Manager', 'URL watcher triggered with params:', params);
     
-    // Only update the URL if at least one search parameter indicates a search action.
-    // For collection pages, always update URL to maintain state synchronization
-    // For non-collection pages, update URL when there's search activity or hasSubmitted
-    const hasSearchActivity = 
-      params.gbi_query.trim() !== '' ||
-      params.refinements.length > 0 ||
-      params.page > 1;
-      
-    const isCollectionPage = params.source === SearchSource.COLLECTION || (params.source as string) === 'collection';
-    const shouldUpdateUrlForNonCollection = !isCollectionPage && params.hasSubmitted === true;
-    
-    // For collection pages, always update URL to keep it in sync with state
-    // For non-collection pages, update URL based on hasSubmitted or search activity
-    const shouldUpdateUrl = isCollectionPage || hasSearchActivity || shouldUpdateUrlForNonCollection;
+    // Determine if we should update the browser URL
+    const shouldUpdate = shouldUpdateBrowserUrl(params, isHandlingPopstateRef.value);
     
     debugLog('URL Manager', 'URL update decision:', {
-      hasSearchActivity,
-      isCollectionPage,
-      shouldUpdateUrlForNonCollection,
-      shouldUpdateUrl,
+      shouldUpdate,
+      isHandlingPopstate: isHandlingPopstateRef.value,
       source: params.source,
       hasSubmitted: params.hasSubmitted
     });
 
-    if (shouldUpdateUrl) {
-      const urlParams = new URLSearchParams();
+    if (shouldUpdate) {
+      // Serialize search parameters to URL query string
+      const urlParams = serializeSearchParamsToUrl(params);
 
-      // Map our search state to URL parameters.
-      urlParams.set('type', params.type);
-      urlParams.set('refinement', params.refinements.join(','));
-      urlParams.set('sort_by', params.sort_by);
-      urlParams.set('page', params.page.toString());
-      urlParams.set('gbi-query', params.gbi_query);
-      urlParams.set('pagesize', params.pagesize);
-
-      // Determine the new path based on the source.
-      let newPath = '/search';
-      if (params.source === SearchSource.COLLECTION || (params.source as string) === 'collection') {
-        newPath = window.location.pathname;
-      }
+      // Determine the new path based on the source
+      const newPath = getUrlPathForSource(params.source);
 
       // Update the URL without reloading the page.
       window.history.pushState({}, '', `${newPath}?${urlParams.toString()}`);
@@ -173,9 +154,28 @@ export function initUrlManager({
     }
   });
 
+  // Create and attach popstate event handler for browser back/forward navigation
+  const popstateHandler = createPopstateHandler({
+    defaultPagesize,
+    source,
+    cachedSearchParamsRef,
+    isHandlingPopstate: isHandlingPopstateRef,
+    updateInputStore,
+    debugLog,
+  });
+  
+  window.addEventListener('popstate', popstateHandler);
+
   // Set the initialized flag to prevent duplicate initialization.
   initUrlManager.initialized = true;
   debugLog('URL Manager', 'Initialization complete');
+
+  // Return cleanup function for proper teardown
+  return () => {
+    window.removeEventListener('popstate', popstateHandler);
+    initUrlManager.initialized = false;
+    debugLog('URL Manager', 'URL Manager cleaned up');
+  };
 }
 
 // Initialize the flag.
