@@ -73,16 +73,19 @@ export function initUrlManager({
 
   // Cache to track current state for popstate handler
   // We need this because Effector stores don't expose a public getState() method
-  let cachedSearchParams: SearchParams = {
-    gbi_query: '',
-    pagesize: defaultPagesize,
-    refinements: [],
-    page: 1,
-    sort_by: DEFAULT_SORT_BY,
-    type: DEFAULT_TYPE,
-    source,
-    collectionId,
-    paginationType,
+  // Using ref pattern to ensure popstate handler always reads the latest value
+  const cachedSearchParamsRef = { 
+    current: {
+      gbi_query: '',
+      pagesize: defaultPagesize,
+      refinements: [],
+      page: 1,
+      sort_by: DEFAULT_SORT_BY,
+      type: DEFAULT_TYPE,
+      source,
+      collectionId,
+      paginationType,
+    }
   };
 
   // Flag to prevent infinite loop: popstate → store update → pushState → popstate
@@ -123,7 +126,7 @@ export function initUrlManager({
   // Subscribe to changes in the Input Store and update the URL accordingly.
   searchInputStore.watch((params) => {
     // Update cached state for popstate handler
-    cachedSearchParams = params;
+    cachedSearchParamsRef.current = params;
     debugLog('URL Manager', 'URL watcher triggered with params:', params);
     
     // Determine if we should update the browser URL
@@ -155,7 +158,7 @@ export function initUrlManager({
   const popstateHandler = createPopstateHandler({
     defaultPagesize,
     source,
-    cachedSearchParams,
+    cachedSearchParamsRef,
     isHandlingPopstate: isHandlingPopstateRef,
     updateInputStore,
     debugLog,

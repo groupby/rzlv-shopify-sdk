@@ -193,12 +193,12 @@ export function parseUrlToSearchParams(config: {
 export function createPopstateHandler(config: {
   defaultPagesize: string;
   source: SearchSource;
-  cachedSearchParams: SearchParams;
+  cachedSearchParamsRef: { current: SearchParams };
   isHandlingPopstate: { value: boolean };
   updateInputStore: (updater: (current: SearchParams) => SearchParams) => void;
   debugLog: (context: string, ...args: unknown[]) => void;
 }): () => void {
-  const { defaultPagesize, source, cachedSearchParams, isHandlingPopstate, updateInputStore, debugLog } = config;
+  const { defaultPagesize, source, cachedSearchParamsRef, isHandlingPopstate, updateInputStore, debugLog } = config;
   
   return () => {
     debugLog('URL Manager', 'popstate event detected - browser back/forward navigation');
@@ -211,7 +211,7 @@ export function createPopstateHandler(config: {
       const newParams = parseUrlToSearchParams({ defaultPagesize, source });
       
       debugLog('URL Manager', 'Parsed URL params from popstate:', newParams);
-      debugLog('URL Manager', 'Current cached params:', cachedSearchParams);
+      debugLog('URL Manager', 'Current cached params:', cachedSearchParamsRef.current);
       
       // Update the input store with new URL parameters
       // Preserve values that aren't in the URL (collectionId, paginationType)
@@ -222,13 +222,13 @@ export function createPopstateHandler(config: {
           // Preserve collectionId only if source is still COLLECTION
           // Clear it when navigating from collection to search to prevent stale state
           collectionId: isCollectionSource(newParams.source)
-            ? cachedSearchParams.collectionId
+            ? cachedSearchParamsRef.current.collectionId
             : undefined,
           // Preserve paginationType - it's a UI configuration, not a URL parameter
-          paginationType: cachedSearchParams.paginationType,
+          paginationType: cachedSearchParamsRef.current.paginationType,
           // Calculate hasSubmitted to ensure SearchManager filter passes
           // We need this because the user navigated to a valid search state
-          hasSubmitted: calculateHasSubmitted(newParams, cachedSearchParams.collectionId),
+          hasSubmitted: calculateHasSubmitted(newParams, cachedSearchParamsRef.current.collectionId),
         };
         
         debugLog('URL Manager', 'Updating store with popstate params:', updatedParams);
