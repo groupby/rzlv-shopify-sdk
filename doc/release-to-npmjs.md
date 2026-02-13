@@ -57,7 +57,7 @@ Use the `--no-git-tag-version` flag. This prevents `npm` from automatically crea
 
 ```shell
 # Replace 'patch' with 'minor' or 'major' as appropriate
-npm version patch --no-git-tag-version
+npm version minor --no-git-tag-version
 ```
 This command will only update the version in your `package.json` and `package-lock.json` files.
 
@@ -110,7 +110,7 @@ Push your commit and the single, newly created scoped tag to the remote reposito
 git push
 
 # Push the specific tag
-git push origin "gbi-search-public-api@${VERSION}" # (Use the correct package name and version)
+git push --tags
 ```
 
 #### **8. Return to the Root Directory**
