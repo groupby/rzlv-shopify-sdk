@@ -120,7 +120,16 @@ export function initUrlManager({
     }));
     debugLog('URL Manager', 'Input store updated with URL parameters', completeInitialParams);
   } else {
-    debugLog('URL Manager', 'No URL parameters to parse, skipping state update');
+    // Even without URL search params, we must sync the configured defaultPagesize
+    // and paginationType into the Input Store. The store initializes with a hardcoded
+    // pagesize of '12', which won't match the admin-configured value.
+    updateInputStore((current: SearchParams): SearchParams => ({
+      ...current,
+      pagesize: defaultPagesize,
+      paginationType,
+      collectionId,
+    }));
+    debugLog('URL Manager', 'No URL search params — synced defaults into store', { defaultPagesize, paginationType });
   }
 
   // Subscribe to changes in the Input Store and update the URL accordingly.
